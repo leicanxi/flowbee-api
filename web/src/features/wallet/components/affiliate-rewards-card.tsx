@@ -73,7 +73,8 @@ export function AffiliateRewardsCard({
             <h3 className='truncate text-sm font-semibold'>
               {t('Referral Program')}
             </h3>
-            <p className='text-muted-foreground line-clamp-1 text-xs'>
+            {/* 改造#2：去掉 line-clamp-1，手机端完整展示推荐规则文案 */}
+            <p className='text-muted-foreground text-xs'>
               {t(
                 'Earn rewards when users join through your referral link. Transfer accumulated rewards to your balance anytime.'
               )}
