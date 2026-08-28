@@ -529,11 +529,12 @@ func HardDeleteUserById(id int) error {
 	return user.HardDelete()
 }
 
-func inviteUser(inviterId int) error {
+// countInvite 统计邀请人数（注册时调用，不发额度）。
+// 改造说明：邀请人奖励已改为「被邀请人首次充值成功后发放」，
+// 注册时仅增加 aff_count 保持「已邀请人数」统计正确。
+func countInvite(inviterId int) error {
 	result := DB.Model(&User{}).Where("id = ?", inviterId).Updates(map[string]interface{}{
-		"aff_count":   gorm.Expr("aff_count + ?", 1),
-		"aff_quota":   gorm.Expr("aff_quota + ?", common.QuotaForInviter),
-		"aff_history": gorm.Expr("aff_history + ?", common.QuotaForInviter),
+		"aff_count": gorm.Expr("aff_count + ?", 1),
 	})
 	if result.Error != nil {
 		return result.Error
@@ -682,11 +683,8 @@ func (user *User) finishInsert(inviterId int) {
 			_ = IncreaseUserQuota(user.Id, common.QuotaForInvitee, true)
 			RecordLog(user.Id, LogTypeSystem, fmt.Sprintf("使用邀请码赠送 %s", logger.LogQuota(common.QuotaForInvitee)))
 		}
-		if common.QuotaForInviter > 0 {
-			//_ = IncreaseUserQuota(inviterId, common.QuotaForInviter)
-			RecordLog(inviterId, LogTypeSystem, fmt.Sprintf("邀请用户赠送 %s", logger.LogQuota(common.QuotaForInviter)))
-			_ = inviteUser(inviterId)
-		}
+		// 改造：邀请人奖励延迟到「被邀请人首次充值成功后」发放，注册时仅统计邀请人数
+		_ = countInvite(inviterId)
 	}
 }
 
@@ -739,10 +737,8 @@ func (user *User) FinalizeOAuthUserCreation(inviterId int) {
 			_ = IncreaseUserQuota(user.Id, common.QuotaForInvitee, true)
 			RecordLog(user.Id, LogTypeSystem, fmt.Sprintf("使用邀请码赠送 %s", logger.LogQuota(common.QuotaForInvitee)))
 		}
-		if common.QuotaForInviter > 0 {
-			RecordLog(inviterId, LogTypeSystem, fmt.Sprintf("邀请用户赠送 %s", logger.LogQuota(common.QuotaForInviter)))
-			_ = inviteUser(inviterId)
-		}
+		// 改造：邀请人奖励延迟到「被邀请人首次充值成功后」发放，注册时仅统计邀请人数
+		_ = countInvite(inviterId)
 	}
 }
 
