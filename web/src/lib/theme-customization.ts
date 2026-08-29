@@ -116,8 +116,9 @@ export type ThemeCustomization = {
 }
 
 export const DEFAULT_THEME_CUSTOMIZATION: ThemeCustomization = {
-  preset: 'default',
-  font: 'default',
+  // 改造#4：全站默认 Anthropic 配色 + sans 字体（用户可在设置中自行覆盖）
+  preset: 'anthropic',
+  font: 'sans',
   radius: 'default',
   scale: 'default',
   contentLayout: 'full',

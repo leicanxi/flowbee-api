@@ -18,10 +18,13 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import {
   Activity,
+  BookOpen,
   Box,
   CreditCard,
   FileText,
   FlaskConical,
+  Gift,
+  Heart,
   Key,
   LayoutDashboard,
   ListTodo,
@@ -107,6 +110,24 @@ export function useSidebarData(): SidebarData {
             title: t('Wallet'),
             url: '/wallet',
             icon: Wallet,
+          },
+          {
+            // 改造#5：外部链接入口
+            title: t('Tutorials'),
+            url: 'https://docs.flowbee.top',
+            icon: BookOpen,
+          },
+          {
+            // 改造#5：外部链接入口
+            title: t('Wishlist & Feedback'),
+            url: 'https://post.flowbee.top',
+            icon: Heart,
+          },
+          {
+            // 改造#3：推荐计划与签到集中到独立入口
+            title: t('Invite & Check-in'),
+            url: '/invite',
+            icon: Gift,
           },
           {
             title: t('Profile'),

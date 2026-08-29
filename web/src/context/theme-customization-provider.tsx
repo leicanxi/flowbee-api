@@ -135,11 +135,11 @@ export function ThemeCustomizationProvider(props: {
 
   // Mirror state to the <body> via data-* attributes so theme-presets.css can
   // override CSS variables at the right cascade layer.
+  // 改造#4：只有 `default` 预设才省略属性；默认被改为 anthropic 后，
+  // 若沿用「等于默认值就不写」的判断，data-theme-preset 会被移除，
+  // 导致 anthropic 预设的 CSS 永不生效（回落到 :root 默认样式）。
   useEffect(() => {
-    applyAttribute(
-      'data-theme-preset',
-      preset === DEFAULT_THEME_CUSTOMIZATION.preset ? null : preset
-    )
+    applyAttribute('data-theme-preset', preset === 'default' ? null : preset)
   }, [preset])
 
   // Font is the one axis where we resolve before writing the attribute:
