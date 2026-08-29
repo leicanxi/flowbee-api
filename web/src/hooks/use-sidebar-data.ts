@@ -112,8 +112,8 @@ export function useSidebarData(): SidebarData {
             icon: Wallet,
           },
           {
-            // 改造#5：外部链接入口
-            title: t('Tutorials'),
+            // 改造#5：外部链接入口（复用已有 key "Usage guide" = 使用教程）
+            title: t('Usage guide'),
             url: 'https://docs.flowbee.top',
             icon: BookOpen,
           },
