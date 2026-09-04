@@ -1,0 +1,18 @@
+# 本地预览专用 dev 镜像（不用于生产）
+# 关键：bun install 在 Linux 镜像层执行，node_modules 不落 Windows 盘，
+# 避免 Windows NTFS / Defender 导致的安装卡死。
+FROM oven/bun:1.4.0
+
+WORKDIR /build
+
+# 先装依赖（层缓存：改源码不会触发重装）
+COPY package.json bun.lock bunfig.toml ./
+RUN bun install --frozen-lockfile
+
+# 再拷源码（.dockerignore 已排除 node_modules / dist）
+COPY . .
+
+ENV VITE_REACT_APP_SERVER_URL=https://flowbee.top
+
+EXPOSE 3000
+CMD ["bun", "run", "dev"]
