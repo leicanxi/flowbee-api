@@ -2203,6 +2203,7 @@
     "min_quota ≥ 0, total ≥ 0, success ≥ 1, all ≤ 2,147,483,647": "min_quota ≥ 0, total ≥ 0, success ≥ 1, tất cả ≤ 2.147.483.647",
     "Minimum account balance required for this tier, in display currency.": "Số dư tài khoản tối thiểu yêu cầu cho cấp này, theo tiền tệ hiển thị.",
     "No balance tiers configured. Click \"Add tier\" to get started.": "Chưa cấu hình cấp số dư. Nhấp \"Thêm cấp\" để bắt đầu.",
+    "Welfare": "Phúc lợi",
     "Group-based rate limits": "Giới hạn tỷ lệ dựa trên nhóm",
     "Group:": "Nhóm:",
     "Group: {{ratio}}x": "Nhóm: {{ratio}}x",

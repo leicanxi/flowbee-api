@@ -2203,6 +2203,7 @@
     "min_quota ≥ 0, total ≥ 0, success ≥ 1, all ≤ 2,147,483,647": "min_quota ≥ 0, total ≥ 0, success ≥ 1, всё ≤ 2 147 483 647",
     "Minimum account balance required for this tier, in display currency.": "Минимальный баланс счёта, необходимый для этого уровня, в валюте отображения.",
     "No balance tiers configured. Click \"Add tier\" to get started.": "Уровни баланса не настроены. Нажмите «Добавить уровень», чтобы начать.",
+    "Welfare": "Бонусы",
     "Group-based rate limits": "Лимиты скорости на основе групп",
     "Group:": "Группа:",
     "Group: {{ratio}}x": "Группа: {{ratio}}x",

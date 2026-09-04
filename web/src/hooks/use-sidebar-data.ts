@@ -100,6 +100,12 @@ export function useSidebarData(): SidebarData {
             configUrls: ['/usage-logs/drawing', '/usage-logs/task'],
             icon: ListTodo,
           },
+          {
+            // 改造#5：外部链接入口（复用已有 key "Usage guide" = 使用教程），移至常规组使用日志下方
+            title: t('Usage guide'),
+            url: 'https://docs.flowbee.top',
+            icon: BookOpen,
+          },
         ],
       },
       {
@@ -112,20 +118,8 @@ export function useSidebarData(): SidebarData {
             icon: Wallet,
           },
           {
-            // 改造#5：外部链接入口（复用已有 key "Usage guide" = 使用教程）
-            title: t('Usage guide'),
-            url: 'https://docs.flowbee.top',
-            icon: BookOpen,
-          },
-          {
-            // 改造#5：外部链接入口
-            title: t('Wishlist & Feedback'),
-            url: 'https://post.flowbee.top',
-            icon: Heart,
-          },
-          {
-            // 改造#3：推荐计划与签到集中到独立入口
-            title: t('Invite & Check-in'),
+            // 改造#3：推荐计划与签到集中到独立入口（更名"福利"，紧邻钱包）
+            title: t('Welfare'),
             url: '/invite',
             icon: Gift,
           },
@@ -133,6 +127,12 @@ export function useSidebarData(): SidebarData {
             title: t('Profile'),
             url: '/profile',
             icon: User,
+          },
+          {
+            // 改造#5：外部链接入口（改造#7：字少的「个人资料」在上，外链「心愿与反馈」移至下方）
+            title: t('Wishlist & Feedback'),
+            url: 'https://post.flowbee.top',
+            icon: Heart,
           },
         ],
       },

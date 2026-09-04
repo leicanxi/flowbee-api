@@ -2203,6 +2203,7 @@
     "min_quota ≥ 0, total ≥ 0, success ≥ 1, all ≤ 2,147,483,647": "min_quota ≥ 0、total ≥ 0、success ≥ 1、すべて 2,147,483,647 以下",
     "Minimum account balance required for this tier, in display currency.": "この階層に必要な最低アカウント残高（表示通貨）。",
     "No balance tiers configured. Click \"Add tier\" to get started.": "残高階層が設定されていません。「階層を追加」をクリックして始めてください。",
+    "Welfare": "福利",
     "Group-based rate limits": "グループベースのレート制限",
     "Group:": "グループ:",
     "Group: {{ratio}}x": "グループ：{{ratio}}x",

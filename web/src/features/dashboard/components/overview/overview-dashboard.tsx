@@ -20,6 +20,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import {
   ArrowRight,
+  ArrowUpRight,
   BookOpen,
   Check,
   ChevronDown,
@@ -28,12 +29,12 @@ import {
   Copy,
   CreditCard,
   FileText,
+  Gift,
+  Heart,
   KeyRound,
   ListChecks,
   RadioTower,
-  ShieldCheck,
   TerminalSquare,
-  Timer,
   type LucideIcon,
 } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
@@ -112,13 +113,6 @@ interface RequestExample {
   keyId?: number
   displayKey: string
   ready: boolean
-}
-
-interface HeroSignal {
-  label: string
-  value: string
-  icon: LucideIcon
-  tone: IconBadgeTone
 }
 
 function getSavedSetupGuideExpanded(): boolean | null {
@@ -275,10 +269,23 @@ function StartStepItem(props: {
   )
 }
 
-function RequestPreview(props: {
-  example: RequestExample
-  signals: HeroSignal[]
-}) {
+type RequestPreviewShortcut =
+  | {
+      kind: 'internal'
+      to: '/invite'
+      label: string
+      icon: LucideIcon
+      tone: IconBadgeTone
+    }
+  | {
+      kind: 'external'
+      href: string
+      label: string
+      icon: LucideIcon
+      tone: IconBadgeTone
+    }
+
+function RequestPreview(props: { example: RequestExample }) {
   const { t } = useTranslation()
   const shouldReduceMotion = useReducedMotion()
   const [isCopying, setIsCopying] = useState(false)
@@ -289,6 +296,30 @@ function RequestPreview(props: {
     model: props.example.model,
   })
   const previewLines = previewCurl.split('\n')
+  // 改造#7：卡片底部改为与左侧栏一致的快捷入口（福利站内跳转，使用教程/心愿与反馈站外新窗口）
+  const shortcuts: RequestPreviewShortcut[] = [
+    {
+      kind: 'internal',
+      to: '/invite',
+      label: t('Welfare'),
+      icon: Gift,
+      tone: 'chart-4',
+    },
+    {
+      kind: 'external',
+      href: 'https://docs.flowbee.top',
+      label: t('Usage guide'),
+      icon: BookOpen,
+      tone: 'info',
+    },
+    {
+      kind: 'external',
+      href: 'https://post.flowbee.top',
+      label: t('Wishlist & Feedback'),
+      icon: Heart,
+      tone: 'warning',
+    },
+  ]
   const handleCopyRequest = async () => {
     if (!props.example.keyId || isCopying) return
 
@@ -368,7 +399,57 @@ function RequestPreview(props: {
         )}
       </div>
 
-      <div className='bg-foreground/[0.035] my-3 rounded-xl p-3 font-mono text-xs'>
+      <div className='mt-3 grid gap-2'>
+        {shortcuts.map((shortcut) => {
+          const Icon = shortcut.icon
+          const shortcutClassName =
+            'bg-muted/40 hover:bg-muted/70 flex items-center justify-between gap-3 rounded-xl px-3 py-2 transition-colors'
+          const content = (
+            <>
+              <span className='flex min-w-0 items-center gap-2'>
+                <IconBadge tone={shortcut.tone} size='xs'>
+                  <Icon />
+                </IconBadge>
+                <span className='truncate text-xs font-medium'>
+                  {shortcut.label}
+                </span>
+              </span>
+              {shortcut.kind === 'internal' ? (
+                <ArrowRight
+                  className='text-muted-foreground size-3.5 shrink-0'
+                  aria-hidden='true'
+                />
+              ) : (
+                <ArrowUpRight
+                  className='text-muted-foreground size-3.5 shrink-0'
+                  aria-hidden='true'
+                />
+              )}
+            </>
+          )
+          return shortcut.kind === 'internal' ? (
+            <Link
+              key={shortcut.label}
+              to={shortcut.to}
+              className={shortcutClassName}
+            >
+              {content}
+            </Link>
+          ) : (
+            <a
+              key={shortcut.label}
+              href={shortcut.href}
+              target='_blank'
+              rel='noreferrer'
+              className={shortcutClassName}
+            >
+              {content}
+            </a>
+          )
+        })}
+      </div>
+
+      <div className='bg-foreground/[0.035] mt-3 rounded-xl p-3 font-mono text-xs'>
         <div className='mb-2 flex items-center gap-1.5'>
           <span className='bg-destructive size-2 rounded-full' />
           <span className='bg-warning size-2 rounded-full' />
@@ -385,31 +466,6 @@ function RequestPreview(props: {
             </code>
           ))}
         </div>
-      </div>
-
-      <div className='grid gap-2'>
-        {props.signals.map((signal) => {
-          const Icon = signal.icon
-
-          return (
-            <div
-              key={signal.label}
-              className='bg-muted/40 flex items-center justify-between gap-3 rounded-xl px-3 py-2'
-            >
-              <span className='flex min-w-0 items-center gap-2'>
-                <IconBadge tone={signal.tone} size='xs'>
-                  <Icon />
-                </IconBadge>
-                <span className='truncate text-xs font-medium'>
-                  {signal.label}
-                </span>
-              </span>
-              <span className='text-muted-foreground shrink-0 text-xs'>
-                {signal.value}
-              </span>
-            </div>
-          )
-        })}
       </div>
     </motion.div>
   )
@@ -560,30 +616,6 @@ export function OverviewDashboard() {
     [isAdmin, quickActions]
   )
 
-  const heroSignals = useMemo<HeroSignal[]>(
-    () => [
-      {
-        label: t('Route active'),
-        value: apiInfoItems.length > 0 ? t('Online') : t('Current domain'),
-        icon: RadioTower,
-        tone: 'info',
-      },
-      {
-        label: t('Auth configured'),
-        value: preferredKey ? t('Secured') : t('Needs API key'),
-        icon: ShieldCheck,
-        tone: 'success',
-      },
-      {
-        label: t('Model selected'),
-        value: modelsQuery.data?.[0] ?? t('Loading'),
-        icon: Timer,
-        tone: 'chart-4',
-      },
-    ],
-    [apiInfoItems.length, modelsQuery.data, preferredKey, t]
-  )
-
   const requestExample = useMemo<RequestExample>(() => {
     const endpoint = normalizeEndpoint(apiInfoItems[0]?.url)
     const model = modelsQuery.data?.[0] ?? 'gpt-4o-mini'
@@ -669,10 +701,7 @@ export function OverviewDashboard() {
                   </ol>
                 </div>
 
-                <RequestPreview
-                  example={requestExample}
-                  signals={heroSignals}
-                />
+                <RequestPreview example={requestExample} />
               </div>
             </div>
           </CardStaggerItem>

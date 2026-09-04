@@ -2203,6 +2203,7 @@
     "min_quota ≥ 0, total ≥ 0, success ≥ 1, all ≤ 2,147,483,647": "min_quota ≥ 0，total ≥ 0，success ≥ 1，均 ≤ 2,147,483,647",
     "Minimum account balance required for this tier, in display currency.": "该档位要求的最低账户余额（按系统显示货币）。",
     "No balance tiers configured. Click \"Add tier\" to get started.": "未配置余额档位。点击“添加档位”开始配置。",
+    "Welfare": "福利",
     "Group-based rate limits": "基于分组的速率限制",
     "Group:": "分组：",
     "Group: {{ratio}}x": "分组：{{ratio}}x",

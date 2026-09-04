@@ -2203,6 +2203,7 @@
     "min_quota ≥ 0, total ≥ 0, success ≥ 1, all ≤ 2,147,483,647": "min_quota ≥ 0, total ≥ 0, success ≥ 1, tous ≤ 2 147 483 647",
     "Minimum account balance required for this tier, in display currency.": "Solde de compte minimal requis pour ce palier, dans la devise d'affichage.",
     "No balance tiers configured. Click \"Add tier\" to get started.": "Aucun palier de solde configuré. Cliquez sur « Ajouter un palier » pour commencer.",
+    "Welfare": "Avantages",
     "Group-based rate limits": "Limites de débit basées sur le groupe",
     "Group:": "Groupe :",
     "Group: {{ratio}}x": "Groupe : {{ratio}}x",

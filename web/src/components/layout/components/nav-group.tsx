@@ -123,7 +123,7 @@ function NavBadge({ children }: { children: ReactNode }) {
 function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
   const { isMobile, setOpenMobile } = useSidebar()
   // 改造#5：url 以 http 开头视为外部链接，用 <a target=_blank> 渲染
-  const isExternal = item.url.startsWith('http')
+  const isExternal = item.url?.startsWith('http') === true
   return (
     <SidebarMenuItem>
       <SidebarMenuButton

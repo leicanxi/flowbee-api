@@ -2203,6 +2203,7 @@
     "min_quota ≥ 0, total ≥ 0, success ≥ 1, all ≤ 2,147,483,647": "min_quota ≥ 0, total ≥ 0, success ≥ 1, all ≤ 2,147,483,647",
     "Minimum account balance required for this tier, in display currency.": "Minimum account balance required for this tier, in display currency.",
     "No balance tiers configured. Click \"Add tier\" to get started.": "No balance tiers configured. Click \"Add tier\" to get started.",
+    "Welfare": "Welfare",
     "Group-based rate limits": "Group-based rate limits",
     "Group:": "Group:",
     "Group: {{ratio}}x": "Group: {{ratio}}x",
