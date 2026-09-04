@@ -76,15 +76,17 @@ func recordRedisRequest(ctx context.Context, rdb *redis.Client, key string, maxC
 	rdb.Expire(ctx, key, time.Duration(setting.ModelRequestRateLimitDurationMinutes)*time.Minute)
 }
 
-// Redis限流处理器
-func redisRateLimitHandler(duration int64, totalMaxCount, successMaxCount int) gin.HandlerFunc {
+// Redis限流处理器。scope 非空表示该分组配置了独立限速（分组限速或余额分档），
+// 计数 key 按分组隔离，避免与其他分组的调用互相挤占额度。
+func redisRateLimitHandler(duration int64, totalMaxCount, successMaxCount int, scope string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userId := strconv.Itoa(c.GetInt("id"))
 		ctx := context.Background()
 		rdb := common.RDB
 
+		totalKey, successKey := modelRateLimitRedisKeys(scope, userId)
+
 		// 1. 检查成功请求数限制
-		successKey := fmt.Sprintf("rateLimit:%s:%s", ModelRequestRateLimitSuccessCountMark, userId)
 		allowed, err := checkRedisRateLimit(ctx, rdb, successKey, successMaxCount, duration)
 		if err != nil {
 			fmt.Println("检查成功请求数限制失败:", err.Error())
@@ -98,7 +100,6 @@ func redisRateLimitHandler(duration int64, totalMaxCount, successMaxCount int) g
 
 		//2.检查总请求数限制并记录总请求（当totalMaxCount为0时会自动跳过，使用令牌桶限流器
 		if totalMaxCount > 0 {
-			totalKey := fmt.Sprintf("rateLimit:%s", userId)
 			// 初始化
 			tb := limiter.New(ctx, rdb)
 			allowed, err = tb.Allow(
@@ -130,14 +131,33 @@ func redisRateLimitHandler(duration int64, totalMaxCount, successMaxCount int) g
 	}
 }
 
+// modelRateLimitRedisKeys 生成 Redis 限流计数 key。
+// scope 为空时保持官方原始 key（历史行为不变）；非空时按分组隔离。
+func modelRateLimitRedisKeys(scope string, userId string) (totalKey, successKey string) {
+	if scope != "" {
+		return fmt.Sprintf("rateLimit:G:%s:%s", scope, userId),
+			fmt.Sprintf("rateLimit:G:%s:%s:%s", scope, ModelRequestRateLimitSuccessCountMark, userId)
+	}
+	return fmt.Sprintf("rateLimit:%s", userId),
+		fmt.Sprintf("rateLimit:%s:%s", ModelRequestRateLimitSuccessCountMark, userId)
+}
+
+// modelRateLimitMemoryKeys 生成内存限流计数 key，隔离规则同 Redis。
+func modelRateLimitMemoryKeys(scope string, userId string) (totalKey, successKey string) {
+	if scope != "" {
+		return "G:" + scope + ":" + ModelRequestRateLimitCountMark + userId,
+			"G:" + scope + ":" + ModelRequestRateLimitSuccessCountMark + userId
+	}
+	return ModelRequestRateLimitCountMark + userId, ModelRequestRateLimitSuccessCountMark + userId
+}
+
 // 内存限流处理器
-func memoryRateLimitHandler(duration int64, totalMaxCount, successMaxCount int) gin.HandlerFunc {
+func memoryRateLimitHandler(duration int64, totalMaxCount, successMaxCount int, scope string) gin.HandlerFunc {
 	inMemoryRateLimiter.Init(time.Duration(setting.ModelRequestRateLimitDurationMinutes) * time.Minute)
 
 	return func(c *gin.Context) {
 		userId := strconv.Itoa(c.GetInt("id"))
-		totalKey := ModelRequestRateLimitCountMark + userId
-		successKey := ModelRequestRateLimitSuccessCountMark + userId
+		totalKey, successKey := modelRateLimitMemoryKeys(scope, userId)
 
 		// 1. 检查总请求数限制（当totalMaxCount为0时跳过）
 		if totalMaxCount > 0 && !inMemoryRateLimiter.Request(totalKey, totalMaxCount, duration) {
@@ -185,18 +205,36 @@ func ModelRequestRateLimit() func(c *gin.Context) {
 			group = common.GetContextKeyString(c, constant.ContextKeyUserGroup)
 		}
 
-		//获取分组的限流配置
-		groupTotalCount, groupSuccessCount, found := setting.GetGroupRateLimit(group)
-		if found {
-			totalMaxCount = groupTotalCount
-			successMaxCount = groupSuccessCount
+		// 计数隔离范围：仅对配置了独立限速的分组按分组记账，
+		// 未配置的分组继续共享官方原始计数 key（历史行为不变）。
+		scope := ""
+
+		// 优先查余额分档：按用户余额选择该分组的限速档位
+		userQuota := int64(common.GetContextKeyInt(c, constant.ContextKeyUserQuota))
+		state, tierTotal, tierSuccess := setting.GetBalanceRateLimit(group, userQuota)
+		if state == setting.BalanceTierBelowMinimum {
+			abortWithOpenAiMessage(c, http.StatusTooManyRequests, "您的账户余额未达到该分组最低要求，无法使用该分组，请充值或更换其他分组令牌")
+			return
+		}
+		if state == setting.BalanceTierMatched {
+			totalMaxCount = tierTotal
+			successMaxCount = tierSuccess
+			scope = group
+		} else {
+			// 未配置余额分档时，走分组限速配置
+			groupTotalCount, groupSuccessCount, found := setting.GetGroupRateLimit(group)
+			if found {
+				totalMaxCount = groupTotalCount
+				successMaxCount = groupSuccessCount
+				scope = group
+			}
 		}
 
 		// 根据存储类型选择并执行限流处理器
 		if common.RedisEnabled {
-			redisRateLimitHandler(duration, totalMaxCount, successMaxCount)(c)
+			redisRateLimitHandler(duration, totalMaxCount, successMaxCount, scope)(c)
 		} else {
-			memoryRateLimitHandler(duration, totalMaxCount, successMaxCount)(c)
+			memoryRateLimitHandler(duration, totalMaxCount, successMaxCount, scope)(c)
 		}
 	}
 }

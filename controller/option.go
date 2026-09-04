@@ -308,6 +308,15 @@ func UpdateOption(c *gin.Context) {
 			})
 			return
 		}
+	case "ModelRequestRateLimitBalanceTier":
+		err = setting.CheckModelRequestRateLimitBalanceTier(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "余额分档限速设置失败: " + err.Error(),
+			})
+			return
+		}
 	case "AutomaticDisableStatusCodes":
 		_, err = operation_setting.ParseHTTPStatusCodeRanges(option.Value.(string))
 		if err != nil {

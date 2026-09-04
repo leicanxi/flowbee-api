@@ -45,6 +45,7 @@ import {
 import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
 import { useUpdateOption } from '../hooks/use-update-option'
+import { BalanceTierVisualEditor } from './balance-tier-visual-editor'
 import { RateLimitVisualEditor } from './rate-limit-visual-editor'
 
 const isValidJSON = (value: string | undefined) => {
@@ -66,6 +67,37 @@ const isValidJSON = (value: string | undefined) => {
   }
 }
 
+const isValidBalanceTierJSON = (value: string | undefined) => {
+  if (!value || value.trim() === '') return true
+  try {
+    const parsed = JSON.parse(value)
+    if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return false
+    }
+    for (const [group, tiers] of Object.entries(parsed)) {
+      if (!Array.isArray(tiers) || tiers.length === 0) return false
+      const seenMinQuota = new Set<number>()
+      for (const tier of tiers) {
+        if (typeof tier !== 'object' || tier === null) return false
+        const { min_quota, total, success } = tier as Record<string, unknown>
+        if (typeof min_quota !== 'number' || typeof total !== 'number' || typeof success !== 'number') {
+          return false
+        }
+        if (min_quota < 0 || total < 0 || success < 1) return false
+        if (min_quota > 2147483647 || total > 2147483647 || success > 2147483647) {
+          return false
+        }
+        if (seenMinQuota.has(min_quota)) return false
+        seenMinQuota.add(min_quota)
+      }
+      if (!group) return false
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
 const createRateLimitSchema = (t: (key: string) => string) =>
   z.object({
     ModelRequestRateLimitEnabled: z.boolean(),
@@ -76,6 +108,12 @@ const createRateLimitSchema = (t: (key: string) => string) =>
       .string()
       .optional()
       .refine(isValidJSON, {
+        message: t('Invalid JSON format or values out of allowed range'),
+      }),
+    ModelRequestRateLimitBalanceTier: z
+      .string()
+      .optional()
+      .refine(isValidBalanceTierJSON, {
         message: t('Invalid JSON format or values out of allowed range'),
       }),
   })
@@ -90,6 +128,7 @@ export function RateLimitSection({ defaultValues }: RateLimitSectionProps) {
   const { t } = useTranslation()
   const updateOption = useUpdateOption()
   const [useVisualEditor, setUseVisualEditor] = useState(true)
+  const [useBalanceVisualEditor, setUseBalanceVisualEditor] = useState(true)
 
   const rateLimitSchema = createRateLimitSchema(t)
 
@@ -244,7 +283,7 @@ export function RateLimitSection({ defaultValues }: RateLimitSectionProps) {
             control={form.control}
             name='ModelRequestRateLimitGroup'
             render={({ field }) => (
-              <FormItem>
+              <FormItem data-settings-form-span='full'>
                 <div className='flex items-center justify-between'>
                   <FormLabel>{t('Group-based rate limits')}</FormLabel>
                   <Button
@@ -307,6 +346,81 @@ export function RateLimitSection({ defaultValues }: RateLimitSectionProps) {
                         <li>
                           {t(
                             'Group config overrides global limits, shares the same period'
+                          )}
+                        </li>
+                      </ul>
+                    </div>
+                  </FormDescription>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name='ModelRequestRateLimitBalanceTier'
+            render={({ field }) => (
+              <FormItem data-settings-form-span='full'>
+                <div className='flex items-center justify-between'>
+                  <FormLabel>{t('Balance-based rate limits')}</FormLabel>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    size='sm'
+                    onClick={() =>
+                      setUseBalanceVisualEditor(!useBalanceVisualEditor)
+                    }
+                  >
+                    {useBalanceVisualEditor ? (
+                      <>
+                        <Code2 className='mr-2 h-4 w-4' />
+                        {t('JSON Mode')}
+                      </>
+                    ) : (
+                      <>
+                        <Palette className='mr-2 h-4 w-4' />
+                        {t('Visual Mode')}
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <FormControl>
+                  {useBalanceVisualEditor ? (
+                    <BalanceTierVisualEditor
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                    />
+                  ) : (
+                    <JsonCodeEditor
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      name={field.name}
+                      onBlur={field.onBlur}
+                      textareaRef={field.ref}
+                      placeholder={`{\n  "welfare": [\n    {"min_quota": 0, "total": 5, "success": 5},\n    {"min_quota": 1000000, "total": 20, "success": 20}\n  ]\n}`}
+                      aria-invalid={Boolean(
+                        form.formState.errors.ModelRequestRateLimitBalanceTier
+                      )}
+                    />
+                  )}
+                </FormControl>
+                {!useBalanceVisualEditor && (
+                  <FormDescription>
+                    <div className='space-y-1 text-xs'>
+                      <p className='font-semibold'>{t('Format:')}</p>
+                      <ul className='list-inside list-disc space-y-0.5 pl-2'>
+                        <li>
+                          {t('JSON object:')}{' '}
+                          {`{"groupName": [{"min_quota": 0, "total": 5, "success": 5}]}`}
+                        </li>
+                        <li>
+                          {t('Example:')}{' '}
+                          {`{"welfare": [{"min_quota": 0, "total": 5, "success": 5}]}`}
+                        </li>
+                        <li>
+                          {t(
+                            'min_quota ≥ 0, total ≥ 0, success ≥ 1, all ≤ 2,147,483,647'
                           )}
                         </li>
                       </ul>
