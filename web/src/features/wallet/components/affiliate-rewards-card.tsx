@@ -16,18 +16,29 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Share2 } from 'lucide-react'
+import { Image as ImageIcon, Link2, Share2 } from 'lucide-react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 
-import { CopyButton } from '@/components/copy-button'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { IconBadge } from '@/components/ui/icon-badge'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatQuota } from '@/lib/format'
 
 import type { UserWalletData } from '../types'
+
+// 改造#8：原生分享面板文案（品牌化固定中文文案，不分语言）
+const INVITE_SHARE_TEXT =
+  '白嫖时刻来了！用我的邀请码注册，你和我都能白拿额度免费使用模型，不嫖白不嫖！链接：'
 
 interface AffiliateRewardsCardProps {
   user: UserWalletData | null
@@ -45,16 +56,49 @@ export function AffiliateRewardsCard({
   loading,
 }: AffiliateRewardsCardProps) {
   const { t } = useTranslation()
+
+  const copyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(affiliateLink)
+      toast.success(t('Copied'))
+    } catch {
+      toast.error(t('Copy failed'))
+    }
+  }, [affiliateLink, t])
+
+  // 改造#8：优先调起手机原生分享面板；不支持（个别桌面浏览器）时降级为复制链接
+  const handleNativeShare = useCallback(async () => {
+    const message = `${INVITE_SHARE_TEXT}${affiliateLink}`
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: t('Referral Program'), text: message })
+      } catch (error) {
+        if ((error as DOMException | undefined)?.name !== 'AbortError') {
+          toast.error(t('Share failed'))
+        }
+      }
+      return
+    }
+    await copyLink()
+  }, [affiliateLink, copyLink, t])
+
+  const handlePosterComingSoon = useCallback(() => {
+    toast.info(t('Share poster is coming soon'))
+  }, [t])
+
   if (loading) {
     return (
       <Card data-card-hover='false' className='bg-muted/20 py-0'>
-        <CardContent className='grid gap-4 p-3 sm:p-4 lg:grid-cols-[minmax(220px,1fr)_minmax(220px,0.72fr)_minmax(320px,1.15fr)] lg:items-center'>
-          <div>
-            <Skeleton className='h-5 w-32' />
-            <Skeleton className='mt-2 h-4 w-48' />
+        <CardContent className='grid gap-4 p-3 sm:p-4'>
+          <div className='flex items-center gap-2.5'>
+            <Skeleton className='size-8 rounded-lg' />
+            <div>
+              <Skeleton className='h-5 w-32' />
+              <Skeleton className='mt-2 h-4 w-48' />
+            </div>
           </div>
-          <Skeleton className='h-14 rounded-lg' />
           <Skeleton className='h-10 rounded-lg' />
+          <Skeleton className='h-9 rounded-lg' />
         </CardContent>
       </Card>
     )
@@ -64,7 +108,7 @@ export function AffiliateRewardsCard({
 
   return (
     <Card data-card-hover='false' className='bg-muted/20 py-0'>
-      <CardContent className='grid gap-3 p-3 sm:gap-4 sm:p-4 lg:grid-cols-[minmax(200px,1fr)_minmax(180px,0.65fr)_minmax(280px,1fr)] lg:items-center'>
+      <CardContent className='grid gap-3 p-3 sm:gap-4 sm:p-4'>
         <div className='flex min-w-0 items-center gap-2.5'>
           <IconBadge tone='chart-3'>
             <Share2 />
@@ -99,20 +143,49 @@ export function AffiliateRewardsCard({
           ))}
         </div>
 
-        <div className='flex items-center gap-2'>
+        <div className='flex flex-wrap items-center gap-2'>
           <Input
             value={affiliateLink}
             readOnly
             className='border-muted bg-background/70 h-9 min-w-0 flex-1 font-mono text-xs'
           />
-          <CopyButton
-            value={affiliateLink}
-            variant='outline'
-            className='bg-background size-9 shrink-0'
-            iconClassName='size-4'
-            tooltip={t('Copy referral link')}
-            aria-label={t('Copy referral link')}
-          />
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  aria-label={t('Invite now')}
+                  variant='outline'
+                  className='shrink-0'
+                  size='lg'
+                />
+              }
+            >
+              <Share2 className='size-4' />
+              {t('Invite now')}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align='end' className='w-44'>
+              {/* 改造#8：分享到 = 调起手机原生分享面板 */}
+              <DropdownMenuItem
+                className='gap-2'
+                onSelect={handleNativeShare}
+              >
+                <Share2 className='size-4' />
+                {t('Share to')}
+              </DropdownMenuItem>
+              <DropdownMenuItem className='gap-2' onSelect={copyLink}>
+                <Link2 className='size-4' />
+                {t('Copy link')}
+              </DropdownMenuItem>
+              {/* 改造#8：分享海报先占位，海报设计后续补 */}
+              <DropdownMenuItem
+                className='gap-2'
+                onSelect={handlePosterComingSoon}
+              >
+                <ImageIcon className='size-4' />
+                {t('Share poster')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {hasRewards && (
             <Button
               onClick={onTransfer}
@@ -125,7 +198,7 @@ export function AffiliateRewardsCard({
           )}
         </div>
         {!complianceConfirmed ? (
-          <p className='text-muted-foreground text-xs lg:col-span-3'>
+          <p className='text-muted-foreground text-xs'>
             {t(
               'Referral reward transfer is disabled until the administrator confirms compliance terms.'
             )}
