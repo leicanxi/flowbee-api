@@ -509,6 +509,10 @@ func buildSelfUserData(user *model.User) map[string]interface{} {
 	userSetting := user.GetSetting()
 	permissions := calculateUserPermissions(user.Role)
 	permissions["admin_permissions"] = authz.Capabilities(user.Id, user.Role)
+	welfareThresholds, _ := setting.GetBalanceTierLevels(
+		setting.WelfareGroupName,
+		int64(user.Quota),
+	)
 	return map[string]interface{}{
 		"id":                user.Id,
 		"username":          user.Username,
@@ -531,6 +535,7 @@ func buildSelfUserData(user *model.User) map[string]interface{} {
 		"aff_history_quota": user.AffHistoryQuota,
 		"inviter_id":        user.InviterId,
 		"linux_do_id":       user.LinuxDOId,
+		"welfare_thresholds": welfareThresholds,
 		"setting":           user.Setting,
 		"stripe_customer":   user.StripeCustomer,
 		"sidebar_modules":   userSetting.SidebarModules, // 正确提取sidebar_modules字段

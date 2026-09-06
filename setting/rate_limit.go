@@ -3,6 +3,7 @@ package setting
 import (
 	"fmt"
 	"math"
+	"sort"
 	"sync"
 
 	"github.com/QuantumNous/new-api/common"
@@ -35,6 +36,56 @@ type BalanceRateLimitTier struct {
 }
 
 var ModelRequestRateLimitBalanceTier = map[string][]BalanceRateLimitTier{}
+
+// WelfareGroupName is the group whose balance tiers define the public-welfare
+// member levels shown on the welfare page. It is a fixed, platform-wide
+// reference: every user sees this group's tiers regardless of which group the
+// user themselves belongs to, because the welfare level is a global membership
+// feature rather than a per-user-group one.
+//
+// IMPORTANT: this MUST stay identical to the group name the admin entered when
+// configuring the balance-tier tiers in settings. If the group is renamed, this
+// constant has to be updated in sync, otherwise the welfare page will find no
+// tiers for the renamed group. The frontend never uses this value — it only
+// reads the resolved thresholds from /api/user/self.
+const WelfareGroupName = "福利"
+
+// GetBalanceTierLevels returns the sorted min_quota thresholds for the given
+// group's balance tiers and the 0-based index of the highest tier reached by
+// the given quota (the current level). level is -1 when the group has no tiers
+// configured or quota is below every tier.
+//
+// This is the read side of the balance-tier feature and is intentionally
+// group-agnostic: the caller decides which group. The welfare page passes
+// WelfareGroupName so every user sees the welfare group's tiers.
+func GetBalanceTierLevels(group string, quota int64) (thresholds []int64, level int) {
+	ModelRequestRateLimitMutex.RLock()
+	defer ModelRequestRateLimitMutex.RUnlock()
+
+	tiers, found := ModelRequestRateLimitBalanceTier[group]
+	if !found || len(tiers) == 0 {
+		return nil, -1
+	}
+
+	sorted := make([]BalanceRateLimitTier, len(tiers))
+	copy(sorted, tiers)
+	sort.Slice(sorted, func(i, j int) bool {
+		if sorted[i].MinQuota != sorted[j].MinQuota {
+			return sorted[i].MinQuota < sorted[j].MinQuota
+		}
+		return sorted[i].Success < sorted[j].Success
+	})
+
+	thresholds = make([]int64, len(sorted))
+	level = -1
+	for i, tier := range sorted {
+		thresholds[i] = tier.MinQuota
+		if quota >= tier.MinQuota {
+			level = i
+		}
+	}
+	return thresholds, level
+}
 
 // Balance rate limit lookup states.
 const (

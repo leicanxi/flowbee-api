@@ -242,6 +242,12 @@ export interface UserWalletData {
   aff_count: number
   /** User group */
   group: string
+  /**
+   * Sorted min_quota thresholds of the welfare balance-tier group.
+   * The index of the first threshold not exceeded by the user's quota is the
+   * user's current welfare level (0 = starter tier). Empty when unconfigured.
+   */
+  welfare_thresholds?: number[]
 }
 
 /**
