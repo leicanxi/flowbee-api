@@ -11,70 +11,11 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/common/limiter"
 	"github.com/QuantumNous/new-api/constant"
+	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
 )
-
-const (
-	ModelRequestRateLimitCountMark        = "MRRL"
-	ModelRequestRateLimitSuccessCountMark = "MRRLS"
-	modelRateLimitTimeFormat              = "2006-01-02T15:04:05.000Z"
-)
-
-// 检查Redis中的请求限制
-func checkRedisRateLimit(ctx context.Context, rdb *redis.Client, key string, maxCount int, duration int64) (bool, error) {
-	// 如果maxCount为0，表示不限制
-	if maxCount == 0 {
-		return true, nil
-	}
-
-	// 获取当前计数
-	length, err := rdb.LLen(ctx, key).Result()
-	if err != nil {
-		return false, err
-	}
-
-	// 如果未达到限制，允许请求
-	if length < int64(maxCount) {
-		return true, nil
-	}
-
-	// 检查时间窗口
-	oldTimeStr, _ := rdb.LIndex(ctx, key, -1).Result()
-	oldTime, err := time.Parse(modelRateLimitTimeFormat, oldTimeStr)
-	if err != nil {
-		return false, err
-	}
-
-	nowTimeStr := time.Now().UTC().Format(modelRateLimitTimeFormat)
-	nowTime, err := time.Parse(modelRateLimitTimeFormat, nowTimeStr)
-	if err != nil {
-		return false, err
-	}
-	// 如果在时间窗口内已达到限制，拒绝请求
-	subTime := nowTime.Sub(oldTime).Seconds()
-	if int64(subTime) < duration {
-		rdb.Expire(ctx, key, time.Duration(setting.ModelRequestRateLimitDurationMinutes)*time.Minute)
-		return false, nil
-	}
-
-	return true, nil
-}
-
-// 记录Redis请求
-func recordRedisRequest(ctx context.Context, rdb *redis.Client, key string, maxCount int) {
-	// 如果maxCount为0，不记录请求
-	if maxCount == 0 {
-		return
-	}
-
-	now := time.Now().UTC().Format(modelRateLimitTimeFormat)
-	rdb.LPush(ctx, key, now)
-	rdb.LTrim(ctx, key, 0, int64(maxCount-1))
-	rdb.Expire(ctx, key, time.Duration(setting.ModelRequestRateLimitDurationMinutes)*time.Minute)
-}
 
 // Redis限流处理器。scope 非空表示该分组配置了独立限速（分组限速或余额分档），
 // 计数 key 按分组隔离，避免与其他分组的调用互相挤占额度。
@@ -84,10 +25,10 @@ func redisRateLimitHandler(duration int64, totalMaxCount, successMaxCount int, s
 		ctx := context.Background()
 		rdb := common.RDB
 
-		totalKey, successKey := modelRateLimitRedisKeys(scope, userId)
+		totalKey, successKey := service.ModelRateLimitRedisKeys(scope, userId)
 
 		// 1. 检查成功请求数限制
-		allowed, err := checkRedisRateLimit(ctx, rdb, successKey, successMaxCount, duration)
+		allowed, err := service.CheckRedisRateLimit(ctx, rdb, successKey, successMaxCount, duration)
 		if err != nil {
 			fmt.Println("检查成功请求数限制失败:", err.Error())
 			abortWithOpenAiMessage(c, http.StatusInternalServerError, "rate_limit_check_failed")
@@ -126,66 +67,47 @@ func redisRateLimitHandler(duration int64, totalMaxCount, successMaxCount int, s
 
 		// 5. 如果请求成功，记录成功请求
 		if c.Writer.Status() < 400 {
-			recordRedisRequest(ctx, rdb, successKey, successMaxCount)
+			service.RecordRedisRequest(ctx, rdb, successKey, successMaxCount)
 		}
 	}
 }
 
-// modelRateLimitRedisKeys 生成 Redis 限流计数 key。
-// scope 为空时保持官方原始 key（历史行为不变）；非空时按分组隔离。
-func modelRateLimitRedisKeys(scope string, userId string) (totalKey, successKey string) {
-	if scope != "" {
-		return fmt.Sprintf("rateLimit:G:%s:%s", scope, userId),
-			fmt.Sprintf("rateLimit:G:%s:%s:%s", scope, ModelRequestRateLimitSuccessCountMark, userId)
-	}
-	return fmt.Sprintf("rateLimit:%s", userId),
-		fmt.Sprintf("rateLimit:%s:%s", ModelRequestRateLimitSuccessCountMark, userId)
-}
-
-// modelRateLimitMemoryKeys 生成内存限流计数 key，隔离规则同 Redis。
-func modelRateLimitMemoryKeys(scope string, userId string) (totalKey, successKey string) {
-	if scope != "" {
-		return "G:" + scope + ":" + ModelRequestRateLimitCountMark + userId,
-			"G:" + scope + ":" + ModelRequestRateLimitSuccessCountMark + userId
-	}
-	return ModelRequestRateLimitCountMark + userId, ModelRequestRateLimitSuccessCountMark + userId
-}
-
-// 内存限流处理器
+// 内存限流处理器。成功数限制使用只读预检（Check），请求成功后再实际记账，
+// 与 Redis 路径语义一致：失败的请求不占成功额度。
 func memoryRateLimitHandler(duration int64, totalMaxCount, successMaxCount int, scope string) gin.HandlerFunc {
-	inMemoryRateLimiter.Init(time.Duration(setting.ModelRequestRateLimitDurationMinutes) * time.Minute)
+	common.SharedInMemoryRateLimiter.Init(time.Duration(setting.ModelRequestRateLimitDurationMinutes) * time.Minute)
 
 	return func(c *gin.Context) {
 		userId := strconv.Itoa(c.GetInt("id"))
-		totalKey, successKey := modelRateLimitMemoryKeys(scope, userId)
+		totalKey, successKey := service.ModelRateLimitMemoryKeys(scope, userId)
 
 		// 1. 检查总请求数限制（当totalMaxCount为0时跳过）
-		if totalMaxCount > 0 && !inMemoryRateLimiter.Request(totalKey, totalMaxCount, duration) {
-			c.Status(http.StatusTooManyRequests)
-			c.Abort()
+		if totalMaxCount > 0 && !common.SharedInMemoryRateLimiter.Request(totalKey, totalMaxCount, duration) {
+			abortWithOpenAiMessage(c, http.StatusTooManyRequests, fmt.Sprintf("您已达到总请求数限制：%d分钟内最多请求%d次，包括失败次数，请检查您的请求是否正确", setting.ModelRequestRateLimitDurationMinutes, totalMaxCount))
 			return
 		}
 
-		// 2. 检查成功请求数限制
-		// 使用一个临时key来检查限制，这样可以避免实际记录
-		checkKey := successKey + "_check"
-		if !inMemoryRateLimiter.Request(checkKey, successMaxCount, duration) {
-			c.Status(http.StatusTooManyRequests)
-			c.Abort()
+		// 2. 只读检查成功请求数限制，请求成功后在第 4 步实际记账
+		if !common.SharedInMemoryRateLimiter.Check(successKey, successMaxCount, duration) {
+			abortWithOpenAiMessage(c, http.StatusTooManyRequests, fmt.Sprintf("您已达到请求数限制：%d分钟内最多请求%d次", setting.ModelRequestRateLimitDurationMinutes, successMaxCount))
 			return
 		}
 
 		// 3. 处理请求
 		c.Next()
 
-		// 4. 如果请求成功，记录到实际的成功请求计数中
-		if c.Writer.Status() < 400 {
-			inMemoryRateLimiter.Request(successKey, successMaxCount, duration)
+		// 4. 如果请求成功，记录到成功请求计数中
+		if c.Writer.Status() < 400 && successMaxCount > 0 {
+			common.SharedInMemoryRateLimiter.Request(successKey, successMaxCount, duration)
 		}
 	}
 }
 
-// ModelRequestRateLimit 模型请求限流中间件
+// ModelRequestRateLimit 模型请求限流中间件。
+// 非 auto 令牌：入口处按分组做余额分档/分组限速预检（历史行为）。
+// auto 令牌：分组在渠道选择时才解析，分组级限流推迟到分组解析处执行
+// （service.CheckGroupRateLimit），此处只保留全局限流；请求成功后按
+// 实际落地的分组补记成功数（service.RecordGroupRateLimitSuccess）。
 func ModelRequestRateLimit() func(c *gin.Context) {
 	return func(c *gin.Context) {
 		// 在每个请求时检查是否启用限流
@@ -195,7 +117,7 @@ func ModelRequestRateLimit() func(c *gin.Context) {
 		}
 
 		// 计算限流参数
-		duration := rateLimitDurationSeconds(setting.ModelRequestRateLimitDurationMinutes)
+		duration := service.RateLimitDurationSeconds(setting.ModelRequestRateLimitDurationMinutes)
 		totalMaxCount := setting.ModelRequestRateLimitCount
 		successMaxCount := setting.ModelRequestRateLimitSuccessCount
 
@@ -209,24 +131,28 @@ func ModelRequestRateLimit() func(c *gin.Context) {
 		// 未配置的分组继续共享官方原始计数 key（历史行为不变）。
 		scope := ""
 
-		// 优先查余额分档：按用户余额选择该分组的限速档位
-		userQuota := int64(common.GetContextKeyInt(c, constant.ContextKeyUserQuota))
-		state, tierTotal, tierSuccess := setting.GetBalanceRateLimit(group, userQuota)
-		if state == setting.BalanceTierBelowMinimum {
-			abortWithOpenAiMessage(c, http.StatusTooManyRequests, "您的账户余额未达到该分组最低要求，无法使用该分组，请充值或更换其他分组令牌")
-			return
-		}
-		if state == setting.BalanceTierMatched {
-			totalMaxCount = tierTotal
-			successMaxCount = tierSuccess
-			scope = group
-		} else {
-			// 未配置余额分档时，走分组限速配置
-			groupTotalCount, groupSuccessCount, found := setting.GetGroupRateLimit(group)
-			if found {
-				totalMaxCount = groupTotalCount
-				successMaxCount = groupSuccessCount
+		// auto 分组的解析发生在渠道选择阶段，此处跳过分组级预检，
+		// 否则查 map 只会得到 "auto" 这个 key，永远无法命中分组配置。
+		if group != "auto" {
+			// 优先查余额分档：按用户余额选择该分组的限速档位
+			userQuota := int64(common.GetContextKeyInt(c, constant.ContextKeyUserQuota))
+			state, tierTotal, tierSuccess := setting.GetBalanceRateLimit(group, userQuota)
+			if state == setting.BalanceTierBelowMinimum {
+				abortWithOpenAiMessage(c, http.StatusTooManyRequests, "您的账户余额未达到该分组最低要求，无法使用该分组，请充值或更换其他分组令牌")
+				return
+			}
+			if state == setting.BalanceTierMatched {
+				totalMaxCount = tierTotal
+				successMaxCount = tierSuccess
 				scope = group
+			} else {
+				// 未配置余额分档时，走分组限速配置
+				groupTotalCount, groupSuccessCount, found := setting.GetGroupRateLimit(group)
+				if found {
+					totalMaxCount = groupTotalCount
+					successMaxCount = groupSuccessCount
+					scope = group
+				}
 			}
 		}
 
@@ -236,18 +162,16 @@ func ModelRequestRateLimit() func(c *gin.Context) {
 		} else {
 			memoryRateLimitHandler(duration, totalMaxCount, successMaxCount, scope)(c)
 		}
-	}
-}
 
-func rateLimitDurationSeconds(durationMinutes int) int64 {
-	if durationMinutes <= 0 {
-		return 0
+		// auto 令牌：请求结束后按实际落地的分组补记分组级成功数。
+		// 落地分组未配置分组级限速时不记账；请求失败也不记账。
+		if group == "auto" && c.Writer != nil && c.Writer.Status() < http.StatusBadRequest {
+			if resolvedGroup := common.GetContextKeyString(c, constant.ContextKeyAutoGroup); resolvedGroup != "" {
+				userQuota := int64(common.GetContextKeyInt(c, constant.ContextKeyUserQuota))
+				service.RecordGroupRateLimitSuccess(c.GetInt("id"), resolvedGroup, userQuota)
+			}
+		}
 	}
-	minutes := int64(durationMinutes)
-	if minutes > math.MaxInt64/60 {
-		return math.MaxInt64
-	}
-	return minutes * 60
 }
 
 func rateLimitCapacity(count int, durationSeconds int64) int64 {

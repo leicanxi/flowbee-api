@@ -126,7 +126,7 @@ func redisRateLimiter(c *gin.Context, maxRequestNum int, duration int64, mark st
 
 func memoryRateLimiter(c *gin.Context, maxRequestNum int, duration int64, mark string) {
 	key := mark + c.ClientIP()
-	if !inMemoryRateLimiter.Request(key, maxRequestNum, duration) {
+	if !common.SharedInMemoryRateLimiter.Request(key, maxRequestNum, duration) {
 		writeRateLimited(c, duration)
 		return
 	}
@@ -151,7 +151,7 @@ func rateLimitFactory(maxRequestNum int, duration int64, mark string) func(c *gi
 		}
 	}
 	// It's safe to call multi times.
-	inMemoryRateLimiter.Init(common.RateLimitKeyExpirationDuration)
+	common.SharedInMemoryRateLimiter.Init(common.RateLimitKeyExpirationDuration)
 	return func(c *gin.Context) {
 		memoryRateLimiter(c, maxRequestNum, duration, mark)
 	}
@@ -213,7 +213,7 @@ func userRateLimitFactory(maxRequestNum int, duration int64, mark string) func(c
 		}
 	}
 	// It's safe to call multi times.
-	inMemoryRateLimiter.Init(common.RateLimitKeyExpirationDuration)
+	common.SharedInMemoryRateLimiter.Init(common.RateLimitKeyExpirationDuration)
 	return func(c *gin.Context) {
 		userID := c.GetInt("id")
 		if userID == 0 {
@@ -222,7 +222,7 @@ func userRateLimitFactory(maxRequestNum int, duration int64, mark string) func(c
 			return
 		}
 		key := fmt.Sprintf("%s:user:%d", mark, userID)
-		if !inMemoryRateLimiter.Request(key, maxRequestNum, duration) {
+		if !common.SharedInMemoryRateLimiter.Request(key, maxRequestNum, duration) {
 			writeRateLimited(c, duration)
 			return
 		}

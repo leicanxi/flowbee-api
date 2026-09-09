@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
@@ -92,6 +93,9 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 			return nil, selectGroup, errors.New("auto groups is not enabled")
 		}
 
+		userId := param.Ctx.GetInt("id")
+		userQuota := int64(common.GetContextKeyInt(param.Ctx, constant.ContextKeyUserQuota))
+
 		// startGroupIndex: the group index to start searching from
 		// startGroupIndex: 开始搜索的分组索引
 		startGroupIndex := 0
@@ -103,8 +107,30 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 			}
 		}
 
+		// 门禁判定统计：只有所有候选分组都被分组级限流挡住时，
+		// 才以 ErrAutoGroupsRateLimited 报错（调用方返回 429），
+		// 否则维持"分组无可用渠道"的常规错误语义。
+		gateDenied, gatePassed := 0, 0
+
 		for i := startGroupIndex; i < len(autoGroups); i++ {
 			autoGroup := autoGroups[i]
+			// 分组级限流门禁：auto 在此处才解析成真实分组，余额分档/分组
+			// 限速也在此处生效。被挡住的分组视同不可用，切换到下一个分组。
+			decision := CheckGroupRateLimit(autoGroup, userId, userQuota)
+			if decision != GroupRateLimitAllow {
+				gateDenied++
+				if decision == GroupRateLimitSkipOverLimit {
+					logger.LogInfo(param.Ctx, fmt.Sprintf("auto group %s skipped: rate limit reached", autoGroup))
+				} else {
+					logger.LogInfo(param.Ctx, fmt.Sprintf("auto group %s skipped: user balance below the group's minimum tier", autoGroup))
+				}
+				common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupIndex, i+1)
+				common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupRetryIndex, 0)
+				param.SetRetry(0)
+				continue
+			}
+			gatePassed++
+
 			// Calculate priorityRetry for current group
 			// 计算当前分组的 priorityRetry
 			priorityRetry := param.GetRetry()
@@ -151,6 +177,12 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 				common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupIndex, i)
 			}
 			break
+		}
+
+		// 所有候选分组都被分组级限流挡住：返回可识别错误，
+		// 调用方据此返回 429 而非“无可用渠道”。
+		if channel == nil && gateDenied > 0 && gatePassed == 0 {
+			return nil, selectGroup, ErrAutoGroupsRateLimited
 		}
 	} else {
 		channel, err = model.GetRandomSatisfiedChannel(param.TokenGroup, param.ModelName, param.GetRetry(), param.RequestPath)

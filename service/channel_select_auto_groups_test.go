@@ -127,3 +127,140 @@ func TestCacheGetRandomSatisfiedChannelUsesTokenAutoGroupsWhenGlobalAutoIsEmpty(
 	assert.Equal(t, "default", selectedGroup)
 	assert.Equal(t, "default", common.GetContextKeyString(ctx, constant.ContextKeyAutoGroup))
 }
+
+// setupAutoGroupRateLimitEnv 在既有 auto 分组测试环境上启用分组级限流（内存模式），
+// 并让 token 的 auto 分组为 ["vip", "default"]。
+func setupAutoGroupRateLimitEnv(t *testing.T, tiersJSON string) {
+	t.Helper()
+
+	originalEnabled := setting.ModelRequestRateLimitEnabled
+	originalDuration := setting.ModelRequestRateLimitDurationMinutes
+	originalTiers := setting.ModelRequestRateLimitBalanceTier2JSONString()
+	originalRedisEnabled := common.RedisEnabled
+
+	setting.ModelRequestRateLimitEnabled = true
+	setting.ModelRequestRateLimitDurationMinutes = 1
+	common.RedisEnabled = false
+	require.NoError(t, setting.UpdateModelRequestRateLimitBalanceTierByJSONString(tiersJSON))
+
+	t.Cleanup(func() {
+		setting.ModelRequestRateLimitEnabled = originalEnabled
+		setting.ModelRequestRateLimitDurationMinutes = originalDuration
+		common.RedisEnabled = originalRedisEnabled
+		require.NoError(t, setting.UpdateModelRequestRateLimitBalanceTierByJSONString(originalTiers))
+	})
+}
+
+func TestCacheGetRandomSatisfiedChannelSkipsRateLimitedAutoGroup(t *testing.T) {
+	db := setupChannelSelectAutoGroupsTest(t)
+	const modelName = "auto-groups-ratelimit-model"
+	createChannelSelectAutoGroupsChannel(t, db, 2301, "vip", modelName)
+	createChannelSelectAutoGroupsChannel(t, db, 2302, "default", modelName)
+	model.InitChannelCache()
+
+	setupAutoGroupRateLimitEnv(t, `{"vip":[{"min_quota":0,"total":0,"success":1}]}`)
+
+	gin.SetMode(gin.TestMode)
+	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+	common.SetContextKey(ctx, constant.ContextKeyUserGroup, "default")
+	common.SetContextKey(ctx, constant.ContextKeyTokenAutoGroups, []string{"vip", "default"})
+	ctx.Set("id", 2300)
+	common.SetContextKey(ctx, constant.ContextKeyUserQuota, 0)
+
+	retry := 0
+	param := &RetryParam{
+		Ctx:         ctx,
+		TokenGroup:  "auto",
+		ModelName:   modelName,
+		RequestPath: "/v1/chat/completions",
+		Retry:       &retry,
+	}
+
+	// 未超限时：门禁放行，选到 vip 分组
+	first, selectedGroup, err := CacheGetRandomSatisfiedChannel(param)
+	require.NoError(t, err)
+	require.NotNil(t, first)
+	assert.Equal(t, 2301, first.Id)
+	assert.Equal(t, "vip", selectedGroup)
+
+	// 模拟该用户在 vip 分组已用满成功额度（success=1）
+	RecordGroupRateLimitSuccess(2300, "vip", 0)
+
+	// 再次选择：vip 被门禁挡住，落到 default 分组
+	second, selectedGroup, err := CacheGetRandomSatisfiedChannel(param)
+	require.NoError(t, err)
+	require.NotNil(t, second)
+	assert.Equal(t, 2302, second.Id)
+	assert.Equal(t, "default", selectedGroup)
+	assert.Equal(t, "default", common.GetContextKeyString(ctx, constant.ContextKeyAutoGroup))
+}
+
+func TestCacheGetRandomSatisfiedChannelSkipsBelowMinimumAutoGroup(t *testing.T) {
+	db := setupChannelSelectAutoGroupsTest(t)
+	const modelName = "auto-groups-below-min-model"
+	createChannelSelectAutoGroupsChannel(t, db, 2311, "vip", modelName)
+	createChannelSelectAutoGroupsChannel(t, db, 2312, "default", modelName)
+	model.InitChannelCache()
+
+	// vip 的最低档要求余额 1000000，用户余额为 0
+	setupAutoGroupRateLimitEnv(t, `{"vip":[{"min_quota":1000000,"total":0,"success":1}]}`)
+
+	gin.SetMode(gin.TestMode)
+	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+	common.SetContextKey(ctx, constant.ContextKeyUserGroup, "default")
+	common.SetContextKey(ctx, constant.ContextKeyTokenAutoGroups, []string{"vip", "default"})
+	ctx.Set("id", 2310)
+	common.SetContextKey(ctx, constant.ContextKeyUserQuota, 0)
+
+	retry := 0
+	param := &RetryParam{
+		Ctx:         ctx,
+		TokenGroup:  "auto",
+		ModelName:   modelName,
+		RequestPath: "/v1/chat/completions",
+		Retry:       &retry,
+	}
+
+	channel, selectedGroup, err := CacheGetRandomSatisfiedChannel(param)
+	require.NoError(t, err)
+	require.NotNil(t, channel)
+	assert.Equal(t, 2312, channel.Id, "vip must be skipped when the user balance is below its minimum tier")
+	assert.Equal(t, "default", selectedGroup)
+}
+
+func TestCacheGetRandomSatisfiedChannelAllGroupsRateLimited(t *testing.T) {
+	db := setupChannelSelectAutoGroupsTest(t)
+	const modelName = "auto-groups-all-limited-model"
+	createChannelSelectAutoGroupsChannel(t, db, 2321, "vip", modelName)
+	createChannelSelectAutoGroupsChannel(t, db, 2322, "default", modelName)
+	model.InitChannelCache()
+
+	setupAutoGroupRateLimitEnv(t, `{
+		"vip":[{"min_quota":0,"total":0,"success":1}],
+		"default":[{"min_quota":0,"total":0,"success":1}]
+	}`)
+
+	gin.SetMode(gin.TestMode)
+	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+	common.SetContextKey(ctx, constant.ContextKeyUserGroup, "default")
+	common.SetContextKey(ctx, constant.ContextKeyTokenAutoGroups, []string{"vip", "default"})
+	ctx.Set("id", 2320)
+	common.SetContextKey(ctx, constant.ContextKeyUserQuota, 0)
+
+	// 两个分组的成功额度都已用满
+	RecordGroupRateLimitSuccess(2320, "vip", 0)
+	RecordGroupRateLimitSuccess(2320, "default", 0)
+
+	retry := 0
+	param := &RetryParam{
+		Ctx:         ctx,
+		TokenGroup:  "auto",
+		ModelName:   modelName,
+		RequestPath: "/v1/chat/completions",
+		Retry:       &retry,
+	}
+
+	channel, _, err := CacheGetRandomSatisfiedChannel(param)
+	require.ErrorIs(t, err, ErrAutoGroupsRateLimited)
+	assert.Nil(t, channel)
+}

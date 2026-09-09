@@ -5,6 +5,13 @@ import (
 	"time"
 )
 
+// SharedInMemoryRateLimiter is the process-wide in-memory rate limiter shared
+// by all rate-limit middlewares and by the auto-group selection gate, so that
+// read-only checks (Check) and recordings (Request) observe the same counters.
+// It replaces the middleware-local instance; behavior is unchanged because the
+// previous middlewares already shared a single instance (first Init wins).
+var SharedInMemoryRateLimiter InMemoryRateLimiter
+
 type InMemoryRateLimiter struct {
 	store              map[string]*[]int64
 	mutex              sync.Mutex
@@ -39,6 +46,24 @@ func (l *InMemoryRateLimiter) clearExpiredItems() {
 		}
 		l.mutex.Unlock()
 	}
+}
+
+// Check reports whether another request against key would currently be
+// allowed under maxRequestNum/duration, without recording it. It mirrors
+// Request's window logic and is used for read-only pre-checks where the
+// recording decision is deferred (e.g. only successful requests are counted).
+func (l *InMemoryRateLimiter) Check(key string, maxRequestNum int, duration int64) bool {
+	if maxRequestNum <= 0 {
+		return true
+	}
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+	// [old <-- new]
+	queue, ok := l.store[key]
+	if !ok || len(*queue) < maxRequestNum {
+		return true
+	}
+	return time.Now().Unix()-(*queue)[0] >= duration
 }
 
 // Request parameter duration's unit is seconds

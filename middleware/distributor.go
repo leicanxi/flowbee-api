@@ -107,11 +107,18 @@ func Distribute() func(c *gin.Context) {
 					preferred, err := model.CacheGetChannel(preferredChannelID)
 					if err == nil && preferred != nil && preferred.Status == common.ChannelStatusEnabled &&
 						channelSupportsRequestPath(preferred, c.Request.URL.Path, modelRequest.Model) {
-						if usingGroup == "auto" {
-							userGroup := common.GetContextKeyString(c, constant.ContextKeyUserGroup)
-							autoGroups := service.GetRequestAutoGroups(c, userGroup)
-							for _, g := range autoGroups {
-								if model.IsChannelEnabledForGroupModel(g, modelRequest.Model, preferred.Id) {
+					if usingGroup == "auto" {
+						userGroup := common.GetContextKeyString(c, constant.ContextKeyUserGroup)
+						autoGroups := service.GetRequestAutoGroups(c, userGroup)
+						userId := c.GetInt("id")
+						userQuota := int64(common.GetContextKeyInt(c, constant.ContextKeyUserQuota))
+						for _, g := range autoGroups {
+							// 渠道亲和命中前先过分组级限流门禁，与
+							// CacheGetRandomSatisfiedChannel 的分组选择保持一致。
+							if service.CheckGroupRateLimit(g, userId, userQuota) != service.GroupRateLimitAllow {
+								continue
+							}
+							if model.IsChannelEnabledForGroupModel(g, modelRequest.Model, preferred.Id) {
 									selectGroup = g
 									common.SetContextKey(c, constant.ContextKeyAutoGroup, g)
 									channel = preferred
@@ -141,6 +148,10 @@ func Distribute() func(c *gin.Context) {
 						Retry:       common.GetPointer(0),
 					})
 					if err != nil {
+						if errors.Is(err, service.ErrAutoGroupsRateLimited) {
+							abortWithOpenAiMessage(c, http.StatusTooManyRequests, "您已达到所有可用分组的限流上限，请稍后再试或充值后使用付费分组", types.ErrorCodeGetChannelFailed)
+							return
+						}
 						showGroup := usingGroup
 						if usingGroup == "auto" {
 							showGroup = fmt.Sprintf("auto(%s)", selectGroup)
