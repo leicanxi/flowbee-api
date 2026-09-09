@@ -25,10 +25,18 @@ func buildChannelAffinityStatsContextForTest(ruleName, usingGroup, keyFP string)
 	return ctx
 }
 
+// uniqueAffinityTestKey generates a collision-proof unique key. time.Now().UnixNano()
+// alone is NOT safe here: Windows clock granularity can hand two consecutive tests
+// the same nanosecond value, making them share one stats entry and corrupting counts.
+func uniqueAffinityTestKey(t *testing.T, prefix string) string {
+	t.Helper()
+	return fmt.Sprintf("%s_%s_%d", prefix, t.Name(), time.Now().UnixNano())
+}
+
 func TestObserveChannelAffinityUsageCacheByRelayFormat_ClaudeMode(t *testing.T) {
-	ruleName := fmt.Sprintf("rule_%d", time.Now().UnixNano())
+	ruleName := uniqueAffinityTestKey(t, "rule")
 	usingGroup := "default"
-	keyFP := fmt.Sprintf("fp_%d", time.Now().UnixNano())
+	keyFP := uniqueAffinityTestKey(t, "fp")
 	ctx := buildChannelAffinityStatsContextForTest(ruleName, usingGroup, keyFP)
 
 	usage := &dto.Usage{
@@ -53,9 +61,9 @@ func TestObserveChannelAffinityUsageCacheByRelayFormat_ClaudeMode(t *testing.T) 
 }
 
 func TestObserveChannelAffinityUsageCacheByRelayFormat_MixedMode(t *testing.T) {
-	ruleName := fmt.Sprintf("rule_%d", time.Now().UnixNano())
+	ruleName := uniqueAffinityTestKey(t, "rule")
 	usingGroup := "default"
-	keyFP := fmt.Sprintf("fp_%d", time.Now().UnixNano())
+	keyFP := uniqueAffinityTestKey(t, "fp")
 	ctx := buildChannelAffinityStatsContextForTest(ruleName, usingGroup, keyFP)
 
 	openAIUsage := &dto.Usage{
@@ -83,9 +91,9 @@ func TestObserveChannelAffinityUsageCacheByRelayFormat_MixedMode(t *testing.T) {
 }
 
 func TestObserveChannelAffinityUsageCacheByRelayFormat_UnsupportedModeKeepsEmpty(t *testing.T) {
-	ruleName := fmt.Sprintf("rule_%d", time.Now().UnixNano())
+	ruleName := uniqueAffinityTestKey(t, "rule")
 	usingGroup := "default"
-	keyFP := fmt.Sprintf("fp_%d", time.Now().UnixNano())
+	keyFP := uniqueAffinityTestKey(t, "fp")
 	ctx := buildChannelAffinityStatsContextForTest(ruleName, usingGroup, keyFP)
 
 	usage := &dto.Usage{
