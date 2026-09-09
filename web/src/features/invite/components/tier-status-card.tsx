@@ -495,17 +495,19 @@ function TierCard({
           </p>
 
           {locked ? (
-            // 未开放档位（揽境/极观）：无权益图标栏，仅一段说明文字
+            // 未开放档位（揽境/极观）：无权益图标栏，仅一段说明文字。
+            // 文字范围覆盖整个卡宽（left 51 → 右边界 1089，含右侧金币装饰区），
+            // 字号较设计稿放大，以改善手机端（整卡等比缩放）下的可读性。
             <p
               style={{
                 position: 'absolute',
                 left: 51,
-                top: 320,
-                width: 640,
+                top: 296,
+                width: 1038,
                 margin: 0,
-                fontSize: 30,
+                fontSize: 36,
                 fontWeight: 400,
-                lineHeight: 1.65,
+                lineHeight: 1.6,
                 color: 'var(--sub)',
               }}
             >
@@ -641,11 +643,19 @@ export function TierStatusCard({ user }: { user: UserWalletData | null }) {
 
   return (
     <section className='space-y-3'>
-      <div className='flex flex-wrap items-center gap-2.5'>
-        <IconBadge tone='chart-1' size='md'>
-          <Crown />
-        </IconBadge>
-        <h2 className='text-sm font-semibold'>{t('Welfare Tier')}</h2>
+      <div className='space-y-1.5'>
+        <div className='flex flex-wrap items-center gap-2.5'>
+          <IconBadge tone='chart-1' size='md'>
+            <Crown />
+          </IconBadge>
+          <h2 className='text-sm font-semibold'>{t('Welfare Tier')}</h2>
+        </div>
+        {/* 免费额度规则说明：放在卡片外，避免受卡内设计稿等比缩放影响导致手机端过小 */}
+        <p className='text-[13px] leading-relaxed text-muted-foreground sm:text-sm'>
+          {t(
+            'Free quota is allocated by balance to prevent bot abuse. The threshold is extremely low, and calling free models does not consume your quota.'
+          )}
+        </p>
       </div>
 
       <div className='relative'>
@@ -698,6 +708,23 @@ export function TierStatusCard({ user }: { user: UserWalletData | null }) {
             )
           })}
         </div>
+      </div>
+
+      {/* 轮播指示点：暗示可左右滑动（手机端无箭头，主要靠手势） */}
+      <div className='flex items-center justify-center gap-2'>
+        {LEVEL_NAMES.map((name, index) => (
+          <button
+            key={name}
+            type='button'
+            onClick={() => scrollToIndex(index)}
+            aria-label={name}
+            className={`h-1.5 rounded-full transition-all duration-200 ${
+              index === activeIndex
+                ? 'w-5 bg-primary'
+                : 'w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/50'
+            }`}
+          />
+        ))}
       </div>
     </section>
   )

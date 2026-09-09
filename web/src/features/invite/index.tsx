@@ -37,9 +37,11 @@ import { TierStatusCard } from '@/features/invite/components/tier-status-card'
  * 改造#3：将原本位于钱包页的「推荐计划」卡片与个人资料页的「签到」
  * 卡片集中到侧边栏「福利」入口下，方便用户在手机上集中操作。
  *
- * 改造#8：桌面端双列 —— 左列：邀请在上、等级在下（同一 flex 列，间距固定
+ * 改造#8：桌面端双列 —— 左列：等级在上、邀请在下（同一 flex 列，间距固定
  * 如个人资料页，避免签到卡跨行把网格拉高后标题上方出现空隙）；右列：签到。
- * 移动端单列 M1'：邀请 → 等级 → 签到。
+ * 移动端单列 M1'：等级 → 邀请 → 签到。
+ *
+ * 改造#9：福利等级卡组上移到邀请卡之前，作为福利页的主视觉入口。
  */
 export function Invite() {
   const { t } = useTranslation()
@@ -98,10 +100,11 @@ export function Invite() {
         <SectionPageLayout.Title>{t('Welfare')}</SectionPageLayout.Title>
         <SectionPageLayout.Content>
           <div className='mx-auto flex w-full max-w-7xl flex-col gap-4 sm:gap-5 lg:grid lg:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)] lg:items-start'>
-            {/* 左列 wrapper：邀请 + 等级。桌面同列上下紧排（间距与个人资料页卡片一致）；
-                若把邀请/等级拆成两个独立 grid item，右列签到卡(row-span)会把网格行拉高，
-                导致「福利等级」标题与邀请卡之间出现空隙。 */}
+            {/* 左列 wrapper：等级 + 邀请（改造#9：等级卡上移）。桌面同列上下紧排
+                （间距与个人资料页卡片一致）；若把等级/邀请拆成两个独立 grid item，
+                右列签到卡(row-span)会把网格行拉高，导致卡片之间出现空隙。 */}
             <div className='flex min-w-0 flex-col gap-4 sm:gap-5'>
+              <TierStatusCard user={user} />
               <AffiliateRewardsCard
                 user={user}
                 affiliateLink={affiliateLink}
@@ -111,7 +114,6 @@ export function Invite() {
                 }
                 loading={userLoading || affiliateLoading}
               />
-              <TierStatusCard user={user} />
             </div>
             {checkinEnabled && (
               /* 签到卡：桌面端右列（与左列顶部对齐） */
