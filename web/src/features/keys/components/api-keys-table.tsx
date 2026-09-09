@@ -53,7 +53,11 @@ import {
   ERROR_MESSAGES,
 } from '../constants'
 import type { ApiKey } from '../types'
-import { ApiKeyCell, UnlimitedQuotaBadge } from './api-keys-cells'
+import {
+  ApiKeyCell,
+  BaseUrlToolbarButton,
+  UnlimitedQuotaBadge,
+} from './api-keys-cells'
 import { useApiKeysColumns } from './api-keys-columns'
 import { useApiKeys } from './api-keys-provider'
 import { DataTableBulkActions } from './data-table-bulk-actions'
@@ -308,6 +312,7 @@ export function ApiKeysTable() {
       toolbarProps={{
         searchPlaceholder: t('Filter by name...'),
         searchDebounceMs: 500,
+        centerContent: <BaseUrlToolbarButton />,
         additionalSearch: (
           <Input
             placeholder={t('Filter by API key...')}

@@ -35,7 +35,9 @@ import {
 } from '@/components/ui/tooltip'
 import { copyToClipboard } from '@/lib/copy-to-clipboard'
 import { formatQuota } from '@/lib/format'
+import { toast } from 'sonner'
 
+import { getServerAddress } from '../lib/server-address'
 import type { ApiKey } from '../types'
 import { useApiKeys } from './api-keys-provider'
 
@@ -144,6 +146,39 @@ export function ApiKeyCell({ apiKey }: { apiKey: ApiKey }) {
 
 type UnlimitedQuotaBadgeProps = {
   used: number
+}
+
+/**
+ * API 端点复制框：一个整体框，左侧「API端点」标签 + 竖分割线，右侧为
+ * OpenAI 兼容端点域名（ServerAddress），点击地址区域复制。放在密钥页
+ * 表格工具栏中间居中展示，所有密钥共用同一端点。
+ */
+export function BaseUrlToolbarButton() {
+  const { t } = useTranslation()
+  const baseUrl = getServerAddress()
+
+  const handleCopy = useCallback(async () => {
+    const ok = await copyToClipboard(baseUrl)
+    if (ok) toast.success(t('Copied'))
+  }, [baseUrl, t])
+
+  return (
+    <div className='border-input bg-background flex h-8 items-center overflow-hidden rounded-lg border text-base shadow-xs md:text-sm'>
+      <span className='text-muted-foreground border-r px-2.5 leading-none whitespace-nowrap'>
+        {t('API Endpoint')}
+      </span>
+      <button
+        type='button'
+        onClick={handleCopy}
+        title={t('Copy API endpoint')}
+        aria-label={`${t('Copy API endpoint')}: ${baseUrl}`}
+        className='hover:bg-accent hover:text-accent-foreground flex min-w-0 flex-1 items-center gap-1.5 px-2.5 font-mono transition-colors focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-[3px]'
+      >
+        <span className='truncate'>{baseUrl}</span>
+        <Copy className='size-3.5 shrink-0 opacity-60' />
+      </button>
+    </div>
+  )
 }
 
 export function UnlimitedQuotaBadge(props: UnlimitedQuotaBadgeProps) {

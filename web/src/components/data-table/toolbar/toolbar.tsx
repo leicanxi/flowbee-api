@@ -124,6 +124,12 @@ export type DataTableToolbarProps<TData> = {
    */
   viewToggle?: ReactNode
   /**
+   * Content rendered in the flexible middle space between the left-side
+   * filters (search inputs / filter chips) and the right action cluster,
+   * horizontally centered. Renders nothing by default.
+   */
+  centerContent?: ReactNode
+  /**
    * Content rendered on the LEFT side of the secondary action row. When
    * provided the toolbar splits into two visual rows:
    *   Row 1: search inputs / filter chips …… Expand
@@ -384,6 +390,11 @@ export function DataTableToolbar<TData>(props: DataTableToolbarProps<TData>) {
       {props.additionalSearch}
       {filterChips}
       {expanded && hasExpandable && props.expandable}
+      {props.centerContent != null && (
+        <div className='flex min-w-0 flex-1 justify-center'>
+          {props.centerContent}
+        </div>
+      )}
 
       <div className='ms-auto flex shrink-0 items-center gap-1.5 sm:gap-2'>
         {props.preActions}
