@@ -124,6 +124,17 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.GET("/checkin", controller.GetCheckinStatus)
 				selfRoute.POST("/checkin", middleware.TurnstileCheck(), controller.DoCheckin)
 
+				// Lottery routes（改造#12：福利页生日抽奖）
+				selfRoute.GET("/lottery", controller.GetLotteryStatus)
+				selfRoute.POST("/lottery/draw", middleware.TurnstileCheck(), controller.DoLotteryDraw)
+				// 分享动作必须由服务端记账：它解锁的是真实的抽奖机会，
+				// 只做在前端等于没做（直接调 draw 接口就能跳过）。
+				selfRoute.POST("/lottery/share", controller.MarkLotteryShare)
+				// 导出接口挂在 self 组并单独挂 AdminAuth，而不是写进 adminRoute：
+				// adminRoute 下混的是用户管理类路由，导出属于活动运营工具，
+				// 和它们放一起容易在后续维护中被误改权限。权限由 AdminAuth 中间件保证。
+				selfRoute.GET("/lottery/export", middleware.AdminAuth(), controller.ExportLottery)
+
 				// Custom OAuth bindings
 				selfRoute.GET("/oauth/bindings", controller.GetUserOAuthBindings)
 				selfRoute.DELETE("/oauth/bindings/:provider_id", controller.UnbindCustomOAuth)

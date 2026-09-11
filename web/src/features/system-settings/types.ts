@@ -334,6 +334,22 @@ export type BillingSettings = {
   'checkin_setting.enabled': boolean
   'checkin_setting.min_quota': number
   'checkin_setting.max_quota': number
+  // 改造#12：生日抽奖（奖池以 JSON 字符串形式配置）
+  'lottery_setting.enabled': boolean
+  'lottery_setting.start_time': number
+  'lottery_setting.end_time': number
+  'lottery_setting.max_draws_per_user': number
+  'lottery_setting.free_draws_per_user': number
+  'lottery_setting.pacing_slack': number
+  'lottery_setting.title': string
+  'lottery_setting.share_text': string
+  'lottery_setting.anchor_input_price_per_million': number
+  'lottery_setting.anchor_output_price_per_million': number
+  'lottery_setting.anchor_cache_price_per_million': number
+  'lottery_setting.anchor_cache_hit_rate': number
+  'lottery_setting.anchor_output_share': number
+  'lottery_setting.anchor_group_ratio': number
+  'lottery_setting.prizes': string
 }
 
 export type OperationsSettings = {

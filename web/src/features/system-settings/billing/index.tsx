@@ -106,6 +106,38 @@ const defaultBillingSettings: BillingSettings = {
   'checkin_setting.enabled': false,
   'checkin_setting.min_quota': 1000,
   'checkin_setting.max_quota': 10000,
+  // 改造#12：福利抽奖。这里的默认值必须与后端
+  // setting/operation_setting/lottery_setting.go 的默认保持一致 ——
+  // 它只在「从未保存过任何抽奖配置」时兜底；一旦不一致，
+  // 走兜底路径保存一次就会把后端的内定预留位（reserved_user_ids）冲掉。
+  'lottery_setting.enabled': false,
+  'lottery_setting.title': '福利抽奖',
+  'lottery_setting.start_time': 0,
+  'lottery_setting.end_time': 0,
+  'lottery_setting.max_draws_per_user': 2,
+  'lottery_setting.free_draws_per_user': 1,
+  'lottery_setting.pacing_slack': 1.3,
+  'lottery_setting.share_text':
+    '快来flowbee瓜分福利，免费ai额度，尽在flowbee.top',
+  // token 折算口径：deepseek-flash 现行价 × flowbee专属补贴 3 折 × 高缓存假设
+  'lottery_setting.anchor_input_price_per_million': 1,
+  'lottery_setting.anchor_output_price_per_million': 4,
+  'lottery_setting.anchor_cache_price_per_million': 0.02,
+  'lottery_setting.anchor_cache_hit_rate': 0.9,
+  'lottery_setting.anchor_output_share': 0.1,
+  'lottery_setting.anchor_group_ratio': 0.3,
+  'lottery_setting.prizes': JSON.stringify([
+    {
+      id: 'grand',
+      name: '大杯',
+      quota: 342500,
+      total: 1,
+      weight: 1,
+      reserved_user_ids: [36],
+    },
+    { id: 'lucky', name: '小惊喜', quota: 137000, total: 8, weight: 1 },
+    { id: 'daily', name: '小福袋', quota: 13700, total: 45, weight: 1 },
+  ]),
 }
 
 export function BillingSettings() {

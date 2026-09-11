@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { parseCurrencyDisplayType } from '@/lib/currency'
 
 import { CheckinSettingsSection } from '../general/checkin-settings-section'
+import { LotterySettingsSection } from '../general/lottery-settings-section'
 import { PricingSection } from '../general/pricing-section'
 import { QuotaSettingsSection } from '../general/quota-settings-section'
 import { PaymentSettingsSection } from '../integrations/payment-settings-section'
@@ -197,6 +198,34 @@ const BILLING_SECTIONS = [
           enabled: settings['checkin_setting.enabled'],
           minQuota: settings['checkin_setting.min_quota'],
           maxQuota: settings['checkin_setting.max_quota'],
+        }}
+      />
+    ),
+  },
+  {
+    id: 'lottery',
+    titleKey: 'Lucky Draw',
+    build: (settings: BillingSettings) => (
+      <LotterySettingsSection
+        defaultValues={{
+          enabled: settings['lottery_setting.enabled'],
+          title: settings['lottery_setting.title'],
+          startTime: settings['lottery_setting.start_time'],
+          endTime: settings['lottery_setting.end_time'],
+          maxDrawsPerUser: settings['lottery_setting.max_draws_per_user'],
+          freeDrawsPerUser: settings['lottery_setting.free_draws_per_user'],
+          pacingSlack: settings['lottery_setting.pacing_slack'],
+          shareText: settings['lottery_setting.share_text'],
+          anchorInputPrice:
+            settings['lottery_setting.anchor_input_price_per_million'],
+          anchorOutputPrice:
+            settings['lottery_setting.anchor_output_price_per_million'],
+          anchorCachePrice:
+            settings['lottery_setting.anchor_cache_price_per_million'],
+          anchorCacheHitRate: settings['lottery_setting.anchor_cache_hit_rate'],
+          anchorOutputShare: settings['lottery_setting.anchor_output_share'],
+          anchorGroupRatio: settings['lottery_setting.anchor_group_ratio'],
+          prizes: settings['lottery_setting.prizes'],
         }}
       />
     ),

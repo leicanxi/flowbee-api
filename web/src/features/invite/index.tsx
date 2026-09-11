@@ -30,6 +30,7 @@ import { useAffiliate, useTopupInfo } from '@/features/wallet/hooks'
 import type { UserWalletData } from '@/features/wallet/types'
 
 import { TierStatusCard } from '@/features/invite/components/tier-status-card'
+import { LotteryDrawCard } from '@/features/lottery/components/lottery-draw-card'
 
 /**
  * Welfare page (formerly "Invite & Check-in").
@@ -42,6 +43,9 @@ import { TierStatusCard } from '@/features/invite/components/tier-status-card'
  * 移动端单列 M1'：等级 → 邀请 → 签到。
  *
  * 改造#9：福利等级卡组上移到邀请卡之前，作为福利页的主视觉入口。
+ *
+ * 改造#12：右列新增「生日抽奖」卡（位于签到卡之上），受服务端活动开关控制。
+ * 抽奖是限时活动，关闭后整张卡自动消失，不影响常驻布局。
  */
 export function Invite() {
   const { t } = useTranslation()
@@ -59,6 +63,9 @@ export function Invite() {
   } = useAffiliate()
 
   const checkinEnabled = status?.checkin_enabled === true
+  // 改造#12：抽奖活动开关。活动起止时间也由服务端下发，
+  // 但前端只做展示，真正的拦截在服务端 —— 否则直接调接口就能绕过时间限制。
+  const lotteryEnabled = status?.lottery_enabled === true
   const turnstileEnabled = !!(
     status?.turnstile_check && status?.turnstile_site_key
   )
@@ -115,14 +122,21 @@ export function Invite() {
                 loading={userLoading || affiliateLoading}
               />
             </div>
-            {checkinEnabled && (
-              /* 签到卡：桌面端右列（与左列顶部对齐） */
-              <div className='lg:col-start-2 lg:row-start-1'>
-                <CheckinCalendarCard
-                  checkinEnabled={checkinEnabled}
+            {(lotteryEnabled || checkinEnabled) && (
+              /* 右列：抽奖卡在上、签到卡在下（与左列顶部对齐） */
+              <div className='flex min-w-0 flex-col gap-4 sm:gap-5 lg:col-start-2 lg:row-start-1'>
+                <LotteryDrawCard
+                  lotteryEnabled={lotteryEnabled}
                   turnstileEnabled={turnstileEnabled}
                   turnstileSiteKey={turnstileSiteKey}
                 />
+                {checkinEnabled && (
+                  <CheckinCalendarCard
+                    checkinEnabled={checkinEnabled}
+                    turnstileEnabled={turnstileEnabled}
+                    turnstileSiteKey={turnstileSiteKey}
+                  />
+                )}
               </div>
             )}
           </div>
