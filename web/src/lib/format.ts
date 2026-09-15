@@ -79,9 +79,34 @@ export function formatQuota(quota: number): string {
 }
 
 /**
- * Parse quota from the current display input back to quota units.
+ * Render a raw quota value as an estimated token count.
+ *
+ * Quota is the bookkeeping unit (500,000 units = $1); tokens are the unit the
+ * welfare page shows users. The bridge between them is the display-only anchor
+ * price the server sends down (`tokenPricePerMillion`, derived from real call
+ * conditions), so this number is an estimate meant to make the magnitude land —
+ * it never participates in billing.
+ *
+ * The formula deliberately mirrors the backend's own quota→token conversion, so
+ * the same reward renders identically no matter which welfare card shows it.
+ * Every card must go through this function rather than converting on its own.
  */
-export function parseQuotaFromDollars(amount: number): number {
+export function formatQuotaAsTokens(quota: number | null | undefined): string {
+  if (quota == null || Number.isNaN(quota)) return '-'
+
+  const { config } = getCurrencyDisplay()
+  const price = config.tokenPricePerMillion
+  if (!(price > 0) || !(config.quotaPerUnit > 0)) return '-'
+
+  const tokens =
+    ((quota / config.quotaPerUnit) * config.usdExchangeRate * 1e6) / price
+
+  return formatCompactNumber(tokens)
+}
+
+/**
+ * Parse quota from the current display input back to quota units.
+ */export function parseQuotaFromDollars(amount: number): number {
   if (!Number.isFinite(amount)) return 0
 
   const { config, meta } = getCurrencyDisplay()

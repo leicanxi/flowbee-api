@@ -1553,7 +1553,7 @@
     "Each tier supports 0~2 conditions (over len, p, c); the last tier is the catch-all without conditions. Use len (full input length, including cache hits) for tier conditions to avoid mis-routing when cache hits reduce p.": "Each tier supports 0~2 conditions (over len, p, c); the last tier is the catch-all without conditions. Use len (full input length, including cache hits) for tier conditions to avoid mis-routing when cache hits reduce p.",
     "Each tier supports up to 2 conditions; the last tier is the catch-all without conditions. Use full input length for tier conditions to avoid mis-routing when cache hits reduce billable input tokens.": "Each tier supports up to 2 conditions; the last tier is the catch-all without conditions. Use full input length for tier conditions to avoid mis-routing when cache hits reduce billable input tokens.",
     "Each tier supports up to 2 conditions. The last tier without conditions is the fallback.": "Each tier supports up to 2 conditions. The last tier without conditions is the fallback.",
-    "Earn rewards when users join through your referral link. Transfer accumulated rewards to your balance anytime.": "Invite friends — double the perks! To keep out fake accounts, the reward is granted after your friend's first top-up.",
+    "Earn rewards when users join through your referral link. Transfer accumulated rewards to your balance anytime.": "Invite friends — double the perks! To keep out fake accounts, the reward is granted after your friend's first top-up, and can be transferred to your balance anytime.",
     "Edit": "Edit",
     "Edit {{title}}": "Edit {{title}}",
     "Edit all channels with tag:": "Edit all channels with tag:",
@@ -2079,7 +2079,7 @@
     "footer.columns.related.links.oneApi": "One API",
     "footer.columns.related.title": "Related Projects",
     "footer.defaultCopyright": "All rights reserved.",
-    "footer.new\u0061pi.projectAttributionSuffix": "All rights reserved. Designed and developed by the project contributors.",
+    "footer.newapi.projectAttributionSuffix": "All rights reserved. Designed and developed by the project contributors.",
     "For channels added after May 10, 2025, no need to remove \".\" from model names during deployment": "For channels added after May 10, 2025, no need to remove \".\" from model names during deployment",
     "For private deployments, format: https://fastgpt.run/api/openapi": "For private deployments, format: https://fastgpt.run/api/openapi",
     "For security, existing access tokens cannot be displayed. Regenerate only when you need a new token.": "For security, existing access tokens cannot be displayed. Regenerate only when you need a new token.",
@@ -5352,6 +5352,9 @@
     "Zero retention": "Zero retention",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Token figures are estimated with your group subsidy rate (about ¥{{price}} per million tokens)": "Token figures are estimated with your group subsidy rate (about ¥{{price}} per million tokens)",
+    "The full amount will be moved to your balance.": "The full amount will be moved to your balance.",
+    "Minimum transferable reward is {{amount}} tokens": "Minimum transferable reward is {{amount}} tokens"
   }
 }

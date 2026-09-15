@@ -181,6 +181,10 @@ function getConfig(): CurrencyConfig {
     customCurrencySymbol:
       currency?.customCurrencySymbol?.trim() ||
       DEFAULT_CURRENCY_CONFIG.customCurrencySymbol,
+    tokenPricePerMillion:
+      currency?.tokenPricePerMillion && currency.tokenPricePerMillion > 0
+        ? currency.tokenPricePerMillion
+        : DEFAULT_CURRENCY_CONFIG.tokenPricePerMillion,
   }
 }
 

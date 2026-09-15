@@ -36,6 +36,14 @@ export interface CurrencyConfig {
   customCurrencySymbol: string
   /** Exchange rate from USD to the custom currency (used when type === CUSTOM) */
   customCurrencyExchangeRate: number
+  /**
+   * Display-only anchor price in local currency per million tokens.
+   *
+   * Welfare cards (check-in / referral) show quota as an estimated token count
+   * instead of money. That estimate is derived from this single server-provided
+   * price so every card on the page agrees; it never participates in billing.
+   */
+  tokenPricePerMillion: number
 }
 
 export interface SystemConfig {
@@ -54,6 +62,9 @@ export const DEFAULT_CURRENCY_CONFIG: CurrencyConfig = {
   usdExchangeRate: 1,
   customCurrencySymbol: '¤',
   customCurrencyExchangeRate: 1,
+  // Mirrors the backend LotteryAnchorPricePerMillion default; only used as a
+  // fallback before /api/status lands.
+  tokenPricePerMillion: 0.15186,
 }
 
 interface SystemConfigState {

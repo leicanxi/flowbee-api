@@ -17,18 +17,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Loader2 } from 'lucide-react'
-import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Dialog } from '@/components/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  formatQuota,
-  parseQuotaFromDollars,
-  quotaUnitsToDollars,
-} from '@/lib/format'
+import { formatQuotaAsTokens } from '@/lib/format'
 import {
   DEFAULT_CURRENCY_CONFIG,
   useSystemConfigStore,
@@ -51,31 +44,21 @@ export function TransferDialog({
 }: TransferDialogProps) {
   const { t } = useTranslation()
   const currencyConfig = useSystemConfigStore((state) => state.config.currency)
+
+  // 改造#13：奖励改用 token 展示后，这里不再让用户填数字 —— 待领奖励只有
+  // 「一次划走」一种用法，而保留输入框就必须在 token 与额度之间来回换算：
+  // token 是估算口径，用它反推真实额度会误导用户。全额提交真实额度最稳。
   const minimumQuota = Math.ceil(
     currencyConfig.quotaPerUnit > 0
       ? currencyConfig.quotaPerUnit
       : DEFAULT_CURRENCY_CONFIG.quotaPerUnit
   )
-  const minimumAmount = quotaUnitsToDollars(minimumQuota)
-  const maximumAmount = quotaUnitsToDollars(availableQuota)
-  const [amount, setAmount] = useState(minimumAmount)
-  const transferQuota = parseQuotaFromDollars(amount)
-  const canTransfer =
-    Number.isFinite(amount) &&
-    transferQuota >= minimumQuota &&
-    transferQuota <= availableQuota
-
-  useEffect(() => {
-    if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setAmount(minimumAmount)
-    }
-  }, [minimumAmount, open])
+  const canTransfer = availableQuota >= minimumQuota
 
   const handleConfirm = async () => {
     if (!canTransfer) return
 
-    const success = await onConfirm(transferQuota)
+    const success = await onConfirm(availableQuota)
     if (success) {
       onOpenChange(false)
     }
@@ -113,35 +96,24 @@ export function TransferDialog({
     >
       <div className='space-y-4 py-3 sm:space-y-6 sm:py-4'>
         <div className='space-y-2'>
-          <Label className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
+          <div className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
             {t('Available Rewards')}
-          </Label>
-          <div className='text-2xl font-semibold'>
-            {formatQuota(availableQuota)}
           </div>
-        </div>
-
-        <div className='space-y-3'>
-          <Label
-            htmlFor='transfer-amount'
-            className='text-muted-foreground text-xs font-medium tracking-wider uppercase'
-          >
-            {t('Transfer Amount')}
-          </Label>
-          <Input
-            id='transfer-amount'
-            type='number'
-            value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
-            min={minimumAmount}
-            max={maximumAmount}
-            step={minimumAmount}
-            className='font-mono text-lg'
-          />
+          <div className='text-2xl font-semibold tabular-nums'>
+            {formatQuotaAsTokens(availableQuota)} {t('tokens')}
+          </div>
           <p className='text-muted-foreground text-xs'>
-            {t('Minimum:')} {formatQuota(minimumQuota)}
+            {t('The full amount will be moved to your balance.')}
           </p>
         </div>
+
+        {!canTransfer ? (
+          <p className='text-xs text-amber-600 dark:text-amber-400'>
+            {t('Minimum transferable reward is {{amount}} tokens', {
+              amount: formatQuotaAsTokens(minimumQuota),
+            })}
+          </p>
+        ) : null}
       </div>
     </Dialog>
   )

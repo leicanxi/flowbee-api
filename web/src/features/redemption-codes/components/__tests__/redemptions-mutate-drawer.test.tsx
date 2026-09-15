@@ -123,6 +123,7 @@ async function renderDrawer(
       usdExchangeRate: currency.usdExchangeRate,
       customCurrencySymbol: '¤',
       customCurrencyExchangeRate: 1,
+      tokenPricePerMillion: 0.15186,
     },
   })
 

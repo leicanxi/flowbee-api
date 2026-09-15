@@ -32,7 +32,8 @@ import {
 import { IconBadge } from '@/components/ui/icon-badge'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatQuota } from '@/lib/format'
+import { formatQuotaAsTokens } from '@/lib/format'
+import { useSystemConfigStore } from '@/stores/system-config-store'
 
 import type { UserWalletData } from '../types'
 
@@ -56,6 +57,10 @@ export function AffiliateRewardsCard({
   loading,
 }: AffiliateRewardsCardProps) {
   const { t } = useTranslation()
+  // 改造#13：奖励以 token 数展示，折算单价与抽奖卡同一来源
+  const tokenPricePerMillion = useSystemConfigStore(
+    (state) => state.config.currency.tokenPricePerMillion
+  )
 
   const copyLink = useCallback(async () => {
     try {
@@ -126,10 +131,15 @@ export function AffiliateRewardsCard({
           </div>
         </div>
 
+        {/* 改造#13：金额改为 token 展示。奖励本身仍是额度，这里只换展示单位，
+            折算由 formatQuotaAsTokens 统一完成（与抽奖卡同一单价口径）。 */}
         <div className='grid grid-cols-3 gap-1.5 text-center'>
           {[
-            [t('Pending'), formatQuota(user?.aff_quota ?? 0)],
-            [t('Total Earned'), formatQuota(user?.aff_history_quota ?? 0)],
+            [t('Pending'), formatQuotaAsTokens(user?.aff_quota ?? 0)],
+            [
+              t('Total Earned'),
+              formatQuotaAsTokens(user?.aff_history_quota ?? 0),
+            ],
             [t('Invites'), String(user?.aff_count ?? 0)],
           ].map(([label, value]) => (
             <div key={label}>
@@ -142,6 +152,15 @@ export function AffiliateRewardsCard({
             </div>
           ))}
         </div>
+
+        {/* 折算口径必须写出来：token 数是由额度按站内补贴单价反推的估算值，
+            与抽奖卡共用同一口径。用户看到「131.7万」要知道它是怎么来的。 */}
+        <p className='text-muted-foreground text-[11px] leading-snug'>
+          {t(
+            'Token figures are estimated with your group subsidy rate (about ¥{{price}} per million tokens)',
+            { price: Number(tokenPricePerMillion.toFixed(3)) }
+          )}
+        </p>
 
         <div className='flex flex-wrap items-center gap-2'>
           <Input

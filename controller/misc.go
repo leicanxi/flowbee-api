@@ -126,6 +126,14 @@ func GetStatus(c *gin.Context) {
 		"lottery_enabled":             operation_setting.GetLotterySetting().Enabled,
 		"lottery_start_time":          operation_setting.GetLotterySetting().StartTime,
 		"lottery_end_time":            operation_setting.GetLotterySetting().EndTime,
+
+		// 额度 → token 的展示折算单价（本地货币 / 百万 token）。
+		//
+		// 福利页把签到、推荐奖励的额度折算成 token 展示，口径必须与抽奖卡完全一致，
+		// 所以这里直接复用 LotteryAnchorPricePerMillion 这一个来源：前端只做乘法，
+		// 不各自维护一套单价，避免同页不同卡片的 token 数对不上。
+		// 与真实计费无关，仅用于展示。
+		"token_price_per_million": operation_setting.GetLotterySetting().LotteryAnchorPricePerMillion(),
 	}
 
 	// 根据启用状态注入可选内容

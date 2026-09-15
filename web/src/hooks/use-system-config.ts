@@ -47,6 +47,7 @@ interface StatusApiResponse {
     usd_exchange_rate?: number
     custom_currency_symbol?: string
     custom_currency_exchange_rate?: number
+    token_price_per_million?: number
   }
 }
 
@@ -89,6 +90,10 @@ export function mapStatusDataToConfig(
     customCurrencyExchangeRate: toNumber(
       data.custom_currency_exchange_rate,
       DEFAULT_CURRENCY_CONFIG.customCurrencyExchangeRate
+    ),
+    tokenPricePerMillion: toNumber(
+      data.token_price_per_million,
+      DEFAULT_CURRENCY_CONFIG.tokenPricePerMillion
     ),
   }
 
