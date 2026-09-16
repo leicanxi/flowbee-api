@@ -96,6 +96,14 @@ export interface ApiKeyFormData {
   cross_group_retry: boolean
 }
 
+// POST /api/token/ echoes the created key's plaintext value back in the same
+// response, so callers can show it immediately instead of reading it back later.
+export interface CreatedApiKey {
+  id: number
+  key: string
+  name: string
+}
+
 export interface TokenAutoGroupsConfig {
   groups: string[]
   max_count: number

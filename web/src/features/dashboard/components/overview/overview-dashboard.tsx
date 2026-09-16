@@ -21,11 +21,12 @@ import { Link } from '@tanstack/react-router'
 import {
   ArrowRight,
   ArrowUpRight,
+  BadgeDollarSign,
   BookOpen,
   Check,
   ChevronDown,
   ChevronUp,
-  Circle,
+  // Circle, // 引导步骤列表与旧请求卡片的动效一起停用，保留待后续 UI 参考
   Copy,
   CreditCard,
   FileText,
@@ -37,8 +38,8 @@ import {
   TerminalSquare,
   type LucideIcon,
 } from 'lucide-react'
-import { motion, useReducedMotion } from 'motion/react'
-import { useMemo, useState } from 'react'
+// import { motion, useReducedMotion } from 'motion/react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -48,11 +49,16 @@ import {
 } from '@/components/page-transition'
 import { Button } from '@/components/ui/button'
 import { IconBadge, type IconBadgeTone } from '@/components/ui/icon-badge'
-import { fetchTokenKey, getApiKeys } from '@/features/keys/api'
-import type { ApiKey } from '@/features/keys/types'
+import { createApiKey, fetchTokenKey, getApiKeys } from '@/features/keys/api'
+import { DEFAULT_GROUP } from '@/features/keys/constants'
+import type {
+  ApiKey,
+  ApiKeyFormData,
+  CreatedApiKey,
+} from '@/features/keys/types'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { getUserModels } from '@/lib/api'
-import { MOTION_TRANSITION } from '@/lib/motion'
+// import { MOTION_TRANSITION } from '@/lib/motion'
 import { ROLE } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
@@ -109,10 +115,15 @@ interface QuickAction {
 interface RequestExample {
   endpoint: string
   model: string
-  keyName: string
   keyId?: number
   displayKey: string
+  plainKey?: string
   ready: boolean
+}
+
+interface OverviewApiKeys {
+  items: ApiKey[]
+  issuedKey: CreatedApiKey | null
 }
 
 function getSavedSetupGuideExpanded(): boolean | null {
@@ -174,6 +185,21 @@ function buildCurlCommand(args: {
   ].join('\n')
 }
 
+function buildDefaultKeyPayload(name: string): ApiKeyFormData {
+  return {
+    name,
+    remain_quota: 0,
+    expired_time: -1,
+    unlimited_quota: true,
+    model_limits_enabled: false,
+    model_limits: '',
+    allow_ips: '',
+    group: DEFAULT_GROUP,
+    auto_groups: [],
+    cross_group_retry: false,
+  }
+}
+
 function SetupGuideBackdrop(props: { compact?: boolean }) {
   return (
     <>
@@ -212,6 +238,22 @@ function SetupGuideBackdrop(props: { compact?: boolean }) {
   )
 }
 
+/*
+ * 引导步骤列表（左侧带序号的 1/2/3 列表）暂时停用，保留实现待后续 UI 参考。
+ * 恢复时把下方 StartStepItem 与 lucide 的 Circle 一起解注释，并放回
+ * <SetupStepCards /> 旁边（当时放在左侧栏标题下方）：
+ *
+ *   <ol className='bg-background/45 rounded-2xl border p-2 backdrop-blur'>
+ *     {startSteps.map((step, index) => (
+ *       <StartStepItem
+ *         key={step.title}
+ *         step={step}
+ *         index={index}
+ *         isLast={index === startSteps.length - 1}
+ *       />
+ *     ))}
+ *   </ol>
+ *
 function StartStepItem(props: {
   step: StartStep
   index: number
@@ -268,193 +310,371 @@ function StartStepItem(props: {
     </li>
   )
 }
+*/
 
 type RequestPreviewShortcut =
   | {
       kind: 'internal'
-      to: '/invite'
+      to: '/invite' | '/pricing'
       label: string
       icon: LucideIcon
-      tone: IconBadgeTone
     }
   | {
       kind: 'external'
       href: string
       label: string
       icon: LucideIcon
-      tone: IconBadgeTone
     }
 
-function RequestPreview(props: { example: RequestExample }) {
-  const { t } = useTranslation()
-  const shouldReduceMotion = useReducedMotion()
-  const [isCopying, setIsCopying] = useState(false)
-  const { copyToClipboard } = useCopyToClipboard({ notify: false })
-  const previewCurl = buildCurlCommand({
-    endpoint: props.example.endpoint,
-    apiKey: props.example.displayKey,
-    model: props.example.model,
-  })
-  const previewLines = previewCurl.split('\n')
-  // 改造#7：卡片底部改为与左侧栏一致的快捷入口（福利站内跳转，使用教程/心愿与反馈站外新窗口）
-  const shortcuts: RequestPreviewShortcut[] = [
-    {
-      kind: 'internal',
-      to: '/invite',
-      label: t('Welfare'),
-      icon: Gift,
-      tone: 'chart-4',
-    },
-    {
-      kind: 'external',
-      href: 'https://docs.flowbee.top',
-      label: t('Usage guide'),
-      icon: BookOpen,
-      tone: 'info',
-    },
-    {
-      kind: 'external',
-      href: 'https://post.flowbee.top',
-      label: t('Wishlist & Feedback'),
-      icon: Heart,
-      tone: 'warning',
-    },
-  ]
-  const handleCopyRequest = async () => {
-    if (!props.example.keyId || isCopying) return
+interface SetupStepCard {
+  step: number
+  title: string
+  description: string
+  icon: LucideIcon
+  tone: IconBadgeTone
+}
 
-    setIsCopying(true)
+const REQUEST_SHORTCUTS: RequestPreviewShortcut[] = [
+  {
+    kind: 'internal',
+    to: '/invite',
+    label: 'Welfare',
+    icon: Gift,
+  },
+  {
+    kind: 'external',
+    href: 'https://docs.flowbee.top',
+    label: 'Usage guide',
+    icon: BookOpen,
+  },
+  {
+    kind: 'external',
+    href: 'https://post.flowbee.top',
+    label: 'Wishlist & Feedback',
+    icon: Heart,
+  },
+  {
+    kind: 'internal',
+    to: '/pricing',
+    label: 'Model Pricing',
+    icon: BadgeDollarSign,
+  },
+]
+
+const API_KEY_STEP_CARD: SetupStepCard = {
+  step: 1,
+  title: 'Your API Key',
+  description: 'This is the credential your app uses to call the API',
+  icon: KeyRound,
+  tone: 'primary',
+}
+
+const CREDITS_STEP_CARD: SetupStepCard = {
+  step: 2,
+  title: 'Add credits',
+  description:
+    'Adding credits raises your free request rate and keeps bots out',
+  icon: CreditCard,
+  tone: 'chart-4',
+}
+
+const CONNECT_STEP_CARD: SetupStepCard = {
+  step: 3,
+  title: 'Connect your software',
+  description: 'See setup guides for popular apps',
+  icon: TerminalSquare,
+  tone: 'info',
+}
+
+const CARD_SURFACE_CLASS_NAME =
+  'bg-background/70 rounded-xl border px-3 py-2.5 shadow-xs'
+
+const CARD_LINK_CLASS_NAME = cn(
+  CARD_SURFACE_CLASS_NAME,
+  'hover:bg-muted/60 flex items-center justify-between gap-3 transition-colors'
+)
+
+const PANEL_CLASS_NAME = 'bg-foreground/[0.035] rounded-xl p-3'
+
+// 排版与原来那版带序号的引导列表保持一致：图标在左侧跨两行，标题行带序号，
+// 说明压到标题正下方一行；标题行右侧可以挂一个附加入口。
+function StepCardBody(props: SetupStepCard & { action?: ReactNode }) {
+  const { t } = useTranslation()
+  const Icon = props.icon
+
+  return (
+    <span className='flex min-w-0 items-start gap-2.5'>
+      <IconBadge tone={props.tone} size='sm' className='mt-0.5 rounded-lg'>
+        <Icon />
+      </IconBadge>
+      <span className='flex min-w-0 flex-1 flex-col gap-0.5'>
+        <span className='flex min-w-0 items-center gap-2'>
+          <span className='text-muted-foreground font-mono text-xs tabular-nums'>
+            {props.step}.
+          </span>
+          <span className='truncate text-sm font-medium'>{t(props.title)}</span>
+          {props.action && (
+            <span className='ml-auto shrink-0'>{props.action}</span>
+          )}
+        </span>
+        <span className='text-muted-foreground line-clamp-1 text-xs'>
+          {t(props.description)}
+        </span>
+      </span>
+    </span>
+  )
+}
+
+// 终端面板沿用上游原来的结构：一行圆点 + 内容。复制按钮跟第一行内容同排，
+// 这样圆点行的高度只由圆点决定，内容不会被按钮顶下去。
+function TerminalPanel(props: {
+  className?: string
+  action?: ReactNode
+  align?: 'start' | 'center'
+  children: ReactNode
+}) {
+  return (
+    <div className={cn(PANEL_CLASS_NAME, 'font-mono text-xs', props.className)}>
+      <div className='mb-2 flex items-center gap-1.5'>
+        <span
+          className='bg-destructive size-2 rounded-full'
+          aria-hidden='true'
+        />
+        <span className='bg-warning size-2 rounded-full' aria-hidden='true' />
+        <span className='bg-success size-2 rounded-full' aria-hidden='true' />
+      </div>
+      <div
+        className={cn(
+          'flex justify-between gap-2',
+          props.align === 'center' ? 'items-center' : 'items-start'
+        )}
+      >
+        <div className='flex min-w-0 flex-1 flex-col gap-1 overflow-hidden'>
+          {props.children}
+        </div>
+        {props.action}
+      </div>
+    </div>
+  )
+}
+
+// Resource links sit outside the request card so the card itself only carries
+// the three onboarding steps: key, credits, request.
+function RequestShortcutLinks() {
+  const { t } = useTranslation()
+
+  return (
+    <div className='grid gap-2'>
+      {REQUEST_SHORTCUTS.map((shortcut) => {
+        const Icon = shortcut.icon
+        const content = (
+          <>
+            <span className='flex min-w-0 items-center gap-2'>
+              <Icon
+                className='text-muted-foreground size-4 shrink-0'
+                aria-hidden='true'
+              />
+              <span className='truncate text-sm font-medium'>
+                {t(shortcut.label)}
+              </span>
+            </span>
+            {shortcut.kind === 'internal' ? (
+              <ArrowRight
+                className='text-muted-foreground size-4 shrink-0'
+                aria-hidden='true'
+              />
+            ) : (
+              <ArrowUpRight
+                className='text-muted-foreground size-4 shrink-0'
+                aria-hidden='true'
+              />
+            )}
+          </>
+        )
+        return shortcut.kind === 'internal' ? (
+          <Link
+            key={shortcut.label}
+            to={shortcut.to}
+            className={CARD_LINK_CLASS_NAME}
+          >
+            {content}
+          </Link>
+        ) : (
+          <a
+            key={shortcut.label}
+            href={shortcut.href}
+            target='_blank'
+            rel='noreferrer'
+            className={CARD_LINK_CLASS_NAME}
+          >
+            {content}
+          </a>
+        )
+      })}
+    </div>
+  )
+}
+
+// The key panel and the curl panel sit in different columns, so the copy logic
+// they share lives here instead of being duplicated in both.
+function useExampleCopy(example: RequestExample) {
+  const { t } = useTranslation()
+  const [copyingTarget, setCopyingTarget] = useState<'curl' | 'key' | null>(
+    null
+  )
+  const { copyToClipboard } = useCopyToClipboard({ notify: false })
+
+  const copy = async (target: 'curl' | 'key') => {
+    if (copyingTarget) return
+
+    setCopyingTarget(target)
     try {
-      const result = await fetchTokenKey(props.example.keyId)
-      const key = result.success && result.data?.key ? result.data.key : ''
-      if (!key) {
-        toast.error(result.message || t('Failed to copy to clipboard'))
+      let plainKey = example.plainKey ?? ''
+      let resolveError = ''
+      if (!plainKey && example.keyId) {
+        const result = await fetchTokenKey(example.keyId)
+        plainKey = result.success ? (result.data?.key ?? '') : ''
+        resolveError = result.message ?? ''
+      }
+      if (!plainKey) {
+        toast.error(resolveError || t('Failed to copy to clipboard'))
         return
       }
 
-      const realCurl = buildCurlCommand({
-        endpoint: props.example.endpoint,
-        apiKey: `sk-${key}`,
-        model: props.example.model,
-      })
-      const copied = await copyToClipboard(realCurl)
-      if (copied) {
+      const text =
+        target === 'curl'
+          ? buildCurlCommand({
+              endpoint: example.endpoint,
+              apiKey: `sk-${plainKey}`,
+              model: example.model,
+            })
+          : `sk-${plainKey}`
+      if (await copyToClipboard(text)) {
         toast.success(t('Copied to clipboard'))
       } else {
         toast.error(t('Failed to copy to clipboard'))
       }
     } finally {
-      setIsCopying(false)
+      setCopyingTarget(null)
     }
   }
 
+  return { copyingTarget, copy }
+}
+
+function SetupStepCards(props: { example: RequestExample }) {
+  const { t } = useTranslation()
+  const { example } = props
+  const { copyingTarget, copy } = useExampleCopy(example)
+  // Plaintext is only known right after we create the key for the user; otherwise
+  // the panel shows the masked value and copying resolves the real key on demand.
+  const keyValue = example.plainKey
+    ? `sk-${example.plainKey}`
+    : example.displayKey
+
+  // 纵向拉满并用 justify-between 分配间距：卡片行数不变，多出来的高度进到间隙里，
+  // 于是 blur 底部自然贴在整行底部（也就是右栏底部），以后加减步骤都不用改这里。
   return (
-    <motion.div
-      initial={shouldReduceMotion ? false : { opacity: 0, y: 10, scale: 0.98 }}
-      animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
-      transition={MOTION_TRANSITION.slow}
-      className='bg-background/75 relative overflow-hidden rounded-2xl border p-3 shadow-sm backdrop-blur'
-    >
-      {!shouldReduceMotion && (
-        <motion.div
-          className='via-foreground/30 pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent to-transparent'
-          animate={{ x: ['-100%', '100%'] }}
-          transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
-          aria-hidden='true'
-        />
-      )}
-
-      <div className='flex items-center justify-between gap-3 border-b pb-3'>
-        <div className='flex min-w-0 items-center gap-2'>
-          <IconBadge tone='info'>
-            <TerminalSquare />
-          </IconBadge>
-          <div className='min-w-0'>
-            <div className='truncate text-sm font-medium'>
-              {t('First API request')}
-            </div>
-            <div className='text-muted-foreground truncate text-xs'>
-              {props.example.ready
-                ? props.example.keyName
-                : t('Create an API key to unlock the real request')}
-            </div>
-          </div>
-        </div>
-        {props.example.ready ? (
-          <Button
-            variant='outline'
-            size='sm'
-            className='h-7 gap-1.5 px-2 text-xs'
-            disabled={isCopying}
-            onClick={handleCopyRequest}
-            aria-label={t('Copy ready-to-run curl')}
-          >
-            <Copy data-icon='inline-start' />
-            {isCopying ? t('Loading') : t('Copy')}
-          </Button>
-        ) : (
-          <Button size='sm' variant='outline' render={<Link to='/keys' />}>
-            {t('Create API Key')}
-          </Button>
-        )}
-      </div>
-
-      <div className='mt-3 grid gap-2'>
-        {shortcuts.map((shortcut) => {
-          const Icon = shortcut.icon
-          const shortcutClassName =
-            'bg-muted/40 hover:bg-muted/70 flex items-center justify-between gap-3 rounded-xl px-3 py-2 transition-colors'
-          const content = (
-            <>
-              <span className='flex min-w-0 items-center gap-2'>
-                <IconBadge tone={shortcut.tone} size='xs'>
-                  <Icon />
-                </IconBadge>
-                <span className='truncate text-xs font-medium'>
-                  {shortcut.label}
-                </span>
-              </span>
-              {shortcut.kind === 'internal' ? (
-                <ArrowRight
-                  className='text-muted-foreground size-3.5 shrink-0'
-                  aria-hidden='true'
-                />
-              ) : (
-                <ArrowUpRight
-                  className='text-muted-foreground size-3.5 shrink-0'
-                  aria-hidden='true'
-                />
-              )}
-            </>
-          )
-          return shortcut.kind === 'internal' ? (
+    <ol className='bg-background/45 flex flex-col justify-between gap-2 rounded-2xl border p-2 backdrop-blur'>
+      {/* 改造#18：三步套回原来那个列表底色，密钥内容并进第 1 步卡片里 */}
+      <li className={cn(CARD_SURFACE_CLASS_NAME, 'flex flex-col gap-2.5')}>
+        <StepCardBody
+          {...API_KEY_STEP_CARD}
+          action={
             <Link
-              key={shortcut.label}
-              to={shortcut.to}
-              className={shortcutClassName}
+              to='/keys'
+              className='text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs font-medium transition-colors'
             >
-              {content}
+              {t('Or create one manually')}
+              <ArrowRight className='size-3' aria-hidden='true' />
             </Link>
-          ) : (
-            <a
-              key={shortcut.label}
-              href={shortcut.href}
-              target='_blank'
-              rel='noreferrer'
-              className={shortcutClassName}
-            >
-              {content}
-            </a>
-          )
-        })}
-      </div>
+          }
+        />
+        <TerminalPanel
+          align='center'
+          action={
+            example.ready ? (
+              <Button
+                variant='ghost'
+                size='xs'
+                disabled={copyingTarget !== null}
+                onClick={() => copy('key')}
+                aria-label={t('Copy API key')}
+              >
+                <Copy data-icon='inline-start' />
+                {t('Copy')}
+              </Button>
+            ) : (
+              <Button variant='outline' size='xs' render={<Link to='/keys' />}>
+                {t('Create API Key')}
+              </Button>
+            )
+          }
+        >
+          <code className='truncate' title={keyValue}>
+            {keyValue}
+          </code>
+        </TerminalPanel>
+      </li>
 
-      <div className='bg-foreground/[0.035] mt-3 rounded-xl p-3 font-mono text-xs'>
-        <div className='mb-2 flex items-center gap-1.5'>
-          <span className='bg-destructive size-2 rounded-full' />
-          <span className='bg-warning size-2 rounded-full' />
-          <span className='bg-success size-2 rounded-full' />
-        </div>
+      <li>
+        <Link to='/wallet' className={CARD_LINK_CLASS_NAME}>
+          <StepCardBody {...CREDITS_STEP_CARD} />
+          <ArrowRight
+            className='text-muted-foreground size-4 shrink-0'
+            aria-hidden='true'
+          />
+        </Link>
+      </li>
+
+      <li>
+        <a
+          href='https://docs.flowbee.top'
+          target='_blank'
+          rel='noreferrer'
+          className={CARD_LINK_CLASS_NAME}
+        >
+          <StepCardBody {...CONNECT_STEP_CARD} />
+          <ArrowUpRight
+            className='text-muted-foreground size-4 shrink-0'
+            aria-hidden='true'
+          />
+        </a>
+      </li>
+    </ol>
+  )
+}
+
+// 右侧栏：可复制的 curl 示例（手机端隐藏）+ 功能入口
+function RequestExampleRail(props: { example: RequestExample }) {
+  const { t } = useTranslation()
+  const { example } = props
+  const { copyingTarget, copy } = useExampleCopy(example)
+  const previewLines = buildCurlCommand({
+    endpoint: example.endpoint,
+    apiKey: example.displayKey,
+    model: example.model,
+  }).split('\n')
+
+  return (
+    <div className='flex flex-col gap-2'>
+      <TerminalPanel
+        className='hidden lg:block'
+        action={
+          example.ready ? (
+            <Button
+              variant='ghost'
+              size='xs'
+              disabled={copyingTarget !== null}
+              onClick={() => copy('curl')}
+              aria-label={t('Copy ready-to-run curl')}
+            >
+              <Copy data-icon='inline-start' />
+              {t('Copy')}
+            </Button>
+          ) : null
+        }
+      >
         <div className='flex flex-col gap-1 overflow-hidden'>
           {previewLines.map((line) => (
             <code
@@ -466,8 +686,8 @@ function RequestPreview(props: { example: RequestExample }) {
             </code>
           ))}
         </div>
-      </div>
-    </motion.div>
+      </TerminalPanel>
+    </div>
   )
 }
 
@@ -532,10 +752,31 @@ export function OverviewDashboard() {
 
   const apiKeysQuery = useQuery({
     queryKey: ['dashboard', 'overview', 'api-keys'],
-    queryFn: async () => {
+    // 新用户（一个密钥都没有）首次进入总览时，直接替他建一个默认密钥，并把明文一并带回来，
+    // 这样「创建密钥」不再是一道用户必须自己迈过去的坎。
+    // 建键放在 queryFn 里是为了借用 react-query 的请求去重：StrictMode 双挂载、并发挂载都只会建一次；
+    // 同时关掉 retry，避免失败重发时重复建键。
+    queryFn: async (): Promise<OverviewApiKeys> => {
       const result = await getApiKeys({ p: 1, size: 10 })
-      return result.success ? (result.data?.items ?? []) : []
+      if (!result.success) return { items: [], issuedKey: null }
+
+      const items = result.data?.items ?? []
+      if (items.length > 0) return { items, issuedKey: null }
+
+      const created = await createApiKey(
+        buildDefaultKeyPayload(t('Default API Key'))
+      )
+      if (!created.success || !created.data?.key) {
+        return { items, issuedKey: null }
+      }
+
+      const refreshed = await getApiKeys({ p: 1, size: 10 })
+      return {
+        items: refreshed.success ? (refreshed.data?.items ?? items) : items,
+        issuedKey: created.data,
+      }
     },
+    retry: false,
     staleTime: 60 * 1000,
   })
 
@@ -549,7 +790,7 @@ export function OverviewDashboard() {
   })
 
   const preferredKey = useMemo(
-    () => getPreferredKey(apiKeysQuery.data ?? []),
+    () => getPreferredKey(apiKeysQuery.data?.items ?? []),
     [apiKeysQuery.data]
   )
 
@@ -619,20 +860,30 @@ export function OverviewDashboard() {
   const requestExample = useMemo<RequestExample>(() => {
     const endpoint = normalizeEndpoint(apiInfoItems[0]?.url)
     const model = modelsQuery.data?.[0] ?? 'gpt-4o-mini'
-    const keyName = preferredKey?.name ?? t('No API key yet')
-    const ready = Boolean(preferredKey?.id && model)
+    const issuedKey = apiKeysQuery.data?.issuedKey ?? null
+
+    // 刚自动创建的密钥，明文只在这个响应里出现过一次，直接原样展示，用户不必再去密钥页解一次。
+    if (issuedKey) {
+      return {
+        endpoint,
+        model,
+        keyId: issuedKey.id,
+        displayKey: `sk-${issuedKey.key}`,
+        plainKey: issuedKey.key,
+        ready: true,
+      }
+    }
 
     return {
       endpoint,
       model,
-      keyName,
       keyId: preferredKey?.id,
       displayKey: preferredKey
         ? formatDisplayKey(`sk-${preferredKey.key}`)
         : 'sk-...',
-      ready,
+      ready: Boolean(preferredKey?.id && model),
     }
-  }, [apiInfoItems, modelsQuery.data, preferredKey, t])
+  }, [apiInfoItems, apiKeysQuery.data, modelsQuery.data, preferredKey])
 
   const completedStepCount = startSteps.filter((step) => step.completed).length
   const setupComplete = completedStepCount === startSteps.length
@@ -657,51 +908,47 @@ export function OverviewDashboard() {
             <div className='relative h-full overflow-hidden p-4 sm:p-5'>
               <SetupGuideBackdrop />
               <div className='relative grid gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]'>
-                <div className='flex min-w-0 flex-col gap-5'>
-                  <div className='flex flex-wrap items-start justify-between gap-3'>
-                    <div className='flex max-w-2xl flex-col gap-1'>
-                      <div className='text-muted-foreground flex items-center gap-2 text-xs font-medium tracking-wider uppercase'>
-                        <ListChecks className='size-3.5' aria-hidden='true' />
-                        {t('Get started')}
-                      </div>
-                      <h3 className='text-xl font-semibold tracking-tight sm:text-2xl'>
-                        {t('Build on your API gateway in minutes')}
-                      </h3>
-                      <p className='text-muted-foreground max-w-xl text-sm leading-relaxed'>
-                        {t(
-                          'A focused home for keys, balance, routing, and service health.'
-                        )}
-                      </p>
+                {/* 标题独占一行，右侧的 curl 卡片不能高过它 */}
+                <div className='flex flex-wrap items-start justify-between gap-3 lg:col-span-2'>
+                  <div className='flex max-w-2xl flex-col gap-1'>
+                    <div className='text-muted-foreground flex items-center gap-2 text-xs font-medium tracking-wider uppercase'>
+                      <ListChecks className='size-3.5' aria-hidden='true' />
+                      {t('Get started')}
                     </div>
-                    <div className='flex flex-wrap items-center gap-2'>
-                      <Button
-                        variant='outline'
-                        size='sm'
-                        onClick={handleSetupGuideToggle}
-                      >
-                        <ChevronUp data-icon='inline-start' />
-                        {t('Hide setup guide')}
-                      </Button>
-                      <Button size='sm' render={<Link to='/keys' />}>
-                        <KeyRound data-icon='inline-start' />
-                        {t('Create API Key')}
-                      </Button>
-                    </div>
+                    <h3 className='text-xl font-semibold tracking-tight sm:text-2xl'>
+                      {t('Welcome to the free Flowbee API')}
+                    </h3>
+                    <p className='text-muted-foreground max-w-xl text-sm leading-relaxed'>
+                      {t(
+                        'The site owner is paying out of pocket for now; ads will cover the costs once we grow — please recommend us!'
+                      )}
+                    </p>
                   </div>
-
-                  <ol className='bg-background/45 rounded-2xl border p-2 backdrop-blur'>
-                    {startSteps.map((step, index) => (
-                      <StartStepItem
-                        key={step.title}
-                        step={step}
-                        index={index}
-                        isLast={index === startSteps.length - 1}
-                      />
-                    ))}
-                  </ol>
+                  <div className='flex flex-wrap items-center gap-2'>
+                    <Button
+                      variant='outline'
+                      size='sm'
+                      onClick={handleSetupGuideToggle}
+                    >
+                      <ChevronUp data-icon='inline-start' />
+                      {t('Hide setup guide')}
+                    </Button>
+                    <Button size='sm' render={<Link to='/keys' />}>
+                      <KeyRound data-icon='inline-start' />
+                      {t('Create API Key')}
+                    </Button>
+                  </div>
                 </div>
 
-                <RequestPreview example={requestExample} />
+                <SetupStepCards example={requestExample} />
+
+                {/* 右栏起头比左侧第一张卡片高（只收掉一部分行间距，仍在标题下面），
+                    底部不写死：justify-between 让最后一个功能块的底边落在整行底部，
+                    也就是左侧 blur 的底边，以后增减功能入口都不用改这里 */}
+                <div className='flex flex-col gap-2 lg:-mt-4 lg:justify-between'>
+                  <RequestExampleRail example={requestExample} />
+                  <RequestShortcutLinks />
+                </div>
               </div>
             </div>
           </CardStaggerItem>

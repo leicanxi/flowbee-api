@@ -25,6 +25,7 @@ import type {
   GetApiKeysResponse,
   SearchApiKeysParams,
   ApiKeyFormData,
+  CreatedApiKey,
   TokenAutoGroupsConfig,
 } from './types'
 
@@ -69,10 +70,10 @@ export async function getTokenAutoGroups(): Promise<
   return res.data
 }
 
-// Create a new API key
+// Create a new API key. `data.key` carries the plaintext value (no `sk-` prefix).
 export async function createApiKey(
   data: ApiKeyFormData
-): Promise<ApiResponse<ApiKey>> {
+): Promise<ApiResponse<CreatedApiKey>> {
   const res = await api.post('/api/token/', data)
   return res.data
 }

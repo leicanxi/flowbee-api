@@ -345,9 +345,17 @@ func AddToken(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	// 改造#14：一键创建密钥需要一次请求就拿到 id 与明文 key，供前端就地展示。
+	// 若这里不返回，前端只能「创建 → 查列表 → 取明文」三步，既慢又有并发认错的风险。
+	// 返回的 key 与 GetTokenKey 一致（不含 sk- 前缀），由前端拼接展示。
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
+		"data": gin.H{
+			"id":   cleanToken.Id,
+			"key":  cleanToken.Key,
+			"name": cleanToken.Name,
+		},
 	})
 }
 
