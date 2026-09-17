@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
@@ -28,7 +29,14 @@ func DisableChannel(channelError types.ChannelError, reason string) {
 	success := model.UpdateChannelStatus(channelError.ChannelId, channelError.UsingKey, common.ChannelStatusAutoDisabled, reason)
 	if success {
 		subject := fmt.Sprintf("通道「%s」（#%d）已被禁用", channelError.ChannelName, channelError.ChannelId)
-		content := fmt.Sprintf("通道「%s」（#%d）已被禁用，原因：%s", channelError.ChannelName, channelError.ChannelId, reason)
+		content := common.EmailHeading("通道已被禁用") +
+			common.EmailParagraph("自动巡检发现通道异常，已停止向其调度请求：") +
+			common.EmailInfoTable([][2]string{
+				{"通道名称", channelError.ChannelName},
+				{"通道 ID", fmt.Sprintf("#%d", channelError.ChannelId)},
+				{"禁用原因", reason},
+				{"时间", time.Now().Format("2006-01-02 15:04:05")},
+			})
 		NotifyRootUser(formatNotifyType(channelError.ChannelId, common.ChannelStatusAutoDisabled), subject, content)
 	}
 }
@@ -37,7 +45,13 @@ func EnableChannel(channelId int, usingKey string, channelName string) {
 	success := model.UpdateChannelStatus(channelId, usingKey, common.ChannelStatusEnabled, "")
 	if success {
 		subject := fmt.Sprintf("通道「%s」（#%d）已被启用", channelName, channelId)
-		content := fmt.Sprintf("通道「%s」（#%d）已被启用", channelName, channelId)
+		content := common.EmailHeading("通道已恢复启用") +
+			common.EmailParagraph("该通道已重新加入调度：") +
+			common.EmailInfoTable([][2]string{
+				{"通道名称", channelName},
+				{"通道 ID", fmt.Sprintf("#%d", channelId)},
+				{"时间", time.Now().Format("2006-01-02 15:04:05")},
+			})
 		NotifyRootUser(formatNotifyType(channelId, common.ChannelStatusEnabled), subject, content)
 	}
 }

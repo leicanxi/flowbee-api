@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
@@ -86,14 +87,7 @@ func SendEmail(subject string, receiver string, content string) error {
 	if SMTPServer == "" && SMTPAccount == "" {
 		return fmt.Errorf("SMTP 服务器未配置")
 	}
-	encodedSubject := fmt.Sprintf("=?UTF-8?B?%s?=", base64.StdEncoding.EncodeToString([]byte(subject)))
-	mail := []byte(fmt.Sprintf("To: %s\r\n"+
-		"From: %s <%s>\r\n"+
-		"Subject: %s\r\n"+
-		"Date: %s\r\n"+
-		"Message-ID: %s\r\n"+ // 添加 Message-ID 头
-		"Content-Type: text/html; charset=UTF-8\r\n\r\n%s\r\n",
-		receiver, SystemName, SMTPFrom, encodedSubject, time.Now().Format(time.RFC1123Z), id, content))
+	mail := buildMIMEMessage(receiver, subject, id, buildEmailHTML(content))
 	auth := getSMTPAuth()
 	addr := fmt.Sprintf("%s:%d", SMTPServer, SMTPPort)
 	to := strings.Split(receiver, ";")
@@ -133,4 +127,63 @@ func SendEmail(subject string, receiver string, content string) error {
 		SysError(fmt.Sprintf("failed to send email to %s: %v", receiver, err))
 	}
 	return err
+}
+
+// base64LineWidth 是 RFC 2045 对 base64 编码行的长度上限。
+const base64LineWidth = 76
+
+// buildMIMEMessage 组装 multipart/related 邮件：HTML 正文 + 内嵌 logo。
+// content 传进来之前已经由 buildEmailHTML 套好外壳，这里只负责 MIME 结构。
+func buildMIMEMessage(receiver string, subject string, id string, htmlBody string) []byte {
+	boundary := "=_FlowBee_" + GetRandomString(16) + "_="
+	encodedSubject := fmt.Sprintf("=?UTF-8?B?%s?=", base64.StdEncoding.EncodeToString([]byte(subject)))
+
+	var buf bytes.Buffer
+	buf.Grow(len(htmlBody) + len(emailLogoPNG)*2 + 1024)
+	fmt.Fprintf(&buf, "To: %s\r\n", receiver)
+	fmt.Fprintf(&buf, "From: %s <%s>\r\n", SystemName, SMTPFrom)
+	fmt.Fprintf(&buf, "Subject: %s\r\n", encodedSubject)
+	fmt.Fprintf(&buf, "Date: %s\r\n", time.Now().Format(time.RFC1123Z))
+	fmt.Fprintf(&buf, "Message-ID: %s\r\n", id)
+	buf.WriteString("MIME-Version: 1.0\r\n")
+	fmt.Fprintf(&buf, "Content-Type: multipart/related; boundary=\"%s\"\r\n\r\n", boundary)
+
+	fmt.Fprintf(&buf, "--%s\r\n", boundary)
+	buf.WriteString("Content-Type: text/html; charset=UTF-8\r\n")
+	buf.WriteString("Content-Transfer-Encoding: 8bit\r\n\r\n")
+	buf.WriteString(toCRLF(htmlBody))
+	buf.WriteString("\r\n")
+
+	fmt.Fprintf(&buf, "--%s\r\n", boundary)
+	buf.WriteString("Content-Type: image/png; name=\"logo.png\"\r\n")
+	buf.WriteString("Content-Transfer-Encoding: base64\r\n")
+	fmt.Fprintf(&buf, "Content-ID: <%s>\r\n", emailLogoContentID)
+	buf.WriteString("Content-Disposition: inline; filename=\"logo.png\"\r\n\r\n")
+	buf.WriteString(wrapBase64Lines(emailLogoPNG))
+	buf.WriteString("\r\n")
+
+	fmt.Fprintf(&buf, "--%s--\r\n", boundary)
+	return buf.Bytes()
+}
+
+// toCRLF 把换行统一成 CRLF。RFC 5321 要求 DATA 阶段每行以 CRLF 结束，
+// 而模板里的换行是源码中的 LF。虽说 net/smtp 的 DotWriter 会自动转换，
+// 但依赖这个实现细节不稳妥：换发送方式或加中间环节就会露出裸 LF。
+func toCRLF(s string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(s, "\r\n", "\n"), "\n", "\r\n")
+}
+
+// wrapBase64Lines 按 RFC 2045 把 base64 编码折成 76 字符一行，
+// 单行过长会被部分 SMTP 服务器截断或拒绝。
+func wrapBase64Lines(data []byte) string {
+	encoded := base64.StdEncoding.EncodeToString(data)
+	var b strings.Builder
+	b.Grow(len(encoded) + len(encoded)/base64LineWidth*2)
+	for len(encoded) > base64LineWidth {
+		b.WriteString(encoded[:base64LineWidth])
+		b.WriteString("\r\n")
+		encoded = encoded[base64LineWidth:]
+	}
+	b.WriteString(encoded)
+	return b.String()
 }

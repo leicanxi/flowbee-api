@@ -295,9 +295,10 @@ func SendEmailVerification(c *gin.Context) {
 	code := common.GenerateVerificationCode(6)
 	common.RegisterVerificationCodeWithKey(email, code, common.EmailVerificationPurpose)
 	subject := fmt.Sprintf("%s邮箱验证邮件", common.SystemName)
-	content := fmt.Sprintf("<p>您好，你正在进行%s邮箱验证。</p>"+
-		"<p>您的验证码为: <strong>%s</strong></p>"+
-		"<p>验证码 %d 分钟内有效，如果不是本人操作，请忽略。</p>", common.SystemName, code, common.VerificationValidMinutes)
+	content := common.EmailHeading("验证你的邮箱") +
+		common.EmailParagraph(fmt.Sprintf("你好，欢迎加入 %s。请在注册页面填入下方验证码，完成邮箱验证：", common.SystemName)) +
+		common.EmailCodeBlock(code) +
+		common.EmailNote(fmt.Sprintf("验证码 %d 分钟内有效。如果不是你本人操作，忽略本邮件即可。", common.VerificationValidMinutes))
 	err := common.SendEmail(subject, email, content)
 	if err != nil {
 		common.ApiError(c, err)
@@ -321,10 +322,11 @@ func SendPasswordResetEmail(c *gin.Context) {
 		common.RegisterVerificationCodeWithKey(email, code, common.PasswordResetPurpose)
 		link := fmt.Sprintf("%s/user/reset?email=%s&token=%s", system_setting.ServerAddress, email, code)
 		subject := fmt.Sprintf("%s密码重置", common.SystemName)
-		content := fmt.Sprintf("<p>您好，你正在进行%s密码重置。</p>"+
-			"<p>点击 <a href='%s'>此处</a> 进行密码重置。</p>"+
-			"<p>如果链接无法点击，请尝试点击下面的链接或将其复制到浏览器中打开：<br> %s </p>"+
-			"<p>重置链接 %d 分钟内有效，如果不是本人操作，请忽略。</p>", common.SystemName, link, link, common.VerificationValidMinutes)
+		content := common.EmailHeading("重置你的密码") +
+			common.EmailParagraph(fmt.Sprintf("我们收到了此邮箱对应的 %s 账号的密码重置请求。点击下方按钮设置新密码：", common.SystemName)) +
+			common.EmailButton("重置密码", link) +
+			common.EmailFallbackLink(link) +
+			common.EmailNote(fmt.Sprintf("链接 %d 分钟内有效。如果不是你本人操作，请忽略本邮件，你的密码不会被修改。", common.VerificationValidMinutes))
 		err := common.SendEmail(subject, email, content)
 		if err != nil {
 			logger.LogError(c.Request.Context(), fmt.Sprintf("failed to send password reset email to %s: %s", email, err.Error()))

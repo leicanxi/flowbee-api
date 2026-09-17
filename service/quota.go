@@ -502,8 +502,15 @@ func checkAndSendQuotaNotify(relayInfo *relaycommon.RelayInfo, quota int, preCon
 			} else if notifyType == dto.NotifyTypeGotify {
 				content = "{{value}}，当前剩余额度为 {{value}}，请及时充值。"
 				values = []interface{}{prompt, logger.FormatQuota(relayInfo.UserQuota)}
+			} else if notifyType == dto.NotifyTypeEmail {
+				// 邮件由 SendEmail 统一套外壳，这里只提供内容片段
+				content = common.EmailHeading(prompt) +
+					common.EmailParagraph(fmt.Sprintf("你好，你的 %s 账户余额已低于预警值。为避免调用中断，建议及时充值。", common.SystemName)) +
+					common.EmailStatBlock("当前剩余额度", logger.FormatQuota(relayInfo.UserQuota)) +
+					common.EmailButton("立即充值", topUpLink) +
+					common.EmailNote("你可以在「个人设置 → 通知」里调整预警阈值，或关闭这类提醒。")
 			} else {
-				// 默认内容格式，适用于Email和Webhook（支持HTML）
+				// Webhook 等渠道沿用纯片段格式，不要带上邮件外壳
 				content = "{{value}}，当前剩余额度为 {{value}}，为了不影响您的使用，请及时充值。<br/>充值链接：<a href='{{value}}'>{{value}}</a>"
 				values = []interface{}{prompt, logger.FormatQuota(relayInfo.UserQuota), topUpLink, topUpLink}
 			}
@@ -553,6 +560,13 @@ func checkAndSendSubscriptionQuotaNotify(relayInfo *relaycommon.RelayInfo) {
 		} else if notifyType == dto.NotifyTypeGotify {
 			content = "{{value}}，当前剩余额度为 {{value}}，请及时充值。"
 			values = []interface{}{prompt, logger.FormatQuota(int(remaining))}
+		} else if notifyType == dto.NotifyTypeEmail {
+			// 邮件由 SendEmail 统一套外壳，这里只提供内容片段
+			content = common.EmailHeading(prompt) +
+				common.EmailParagraph(fmt.Sprintf("你好，你的 %s 账户订阅额度已低于预警值。为避免调用中断，建议及时充值。", common.SystemName)) +
+				common.EmailStatBlock("当前剩余订阅额度", logger.FormatQuota(int(remaining))) +
+				common.EmailButton("立即充值", topUpLink) +
+				common.EmailNote("你可以在「个人设置 → 通知」里调整预警阈值，或关闭这类提醒。")
 		} else {
 			content = "{{value}}，当前剩余额度为 {{value}}，为了不影响您的使用，请及时充值。<br/>充值链接：<a href='{{value}}'>{{value}}</a>"
 			values = []interface{}{prompt, logger.FormatQuota(int(remaining)), topUpLink, topUpLink}

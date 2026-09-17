@@ -3,8 +3,10 @@ package service
 import (
 	"bytes"
 	"fmt"
+	"html"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
@@ -114,12 +116,37 @@ func sendEmailNotify(userEmail string, data dto.Notify) error {
 	return common.SendEmail(data.Title, userEmail, content)
 }
 
+// notifyHTMLTagPattern 匹配通知内容里的 HTML 标签。
+// 用正则而不是逐字符丢弃尖括号之间的内容，是为了不把正文里正常的 "<"
+// （例如「比例 < 0.5」）连同后面的文字一起吃掉。
+var notifyHTMLTagPattern = regexp.MustCompile(`<[a-zA-Z/][^>]*>`)
+
+// plainTextNotifyContent 把富文本通知内容降级为纯文本。
+// Bark、Gotify 这类渠道按纯文本渲染，直接送 HTML 会显示成一堆标签。
+func plainTextNotifyContent(content string) string {
+	content = strings.NewReplacer(
+		"<br>", "\n", "<br/>", "\n", "<br />", "\n",
+		"</p>", "\n", "</h1>", "\n", "</div>", "\n", "</tr>", "\n", "</td>", " ",
+	).Replace(content)
+
+	content = notifyHTMLTagPattern.ReplaceAllString(content, "")
+
+	var lines []string
+	for _, line := range strings.Split(html.UnescapeString(content), "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			lines = append(lines, line)
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
 func sendBarkNotify(barkURL string, data dto.Notify) error {
 	// 处理占位符
 	content := data.Content
 	for _, value := range data.Values {
 		content = strings.Replace(content, dto.ContentValueParam, fmt.Sprintf("%v", value), 1)
 	}
+	content = plainTextNotifyContent(content)
 
 	// 替换模板变量
 	finalURL := strings.ReplaceAll(barkURL, "{{title}}", url.QueryEscape(data.Title))
@@ -189,6 +216,7 @@ func sendGotifyNotify(gotifyUrl string, gotifyToken string, priority int, data d
 	for _, value := range data.Values {
 		content = strings.Replace(content, dto.ContentValueParam, fmt.Sprintf("%v", value), 1)
 	}
+	content = plainTextNotifyContent(content)
 
 	// 构建完整的 Gotify API URL
 	// 确保 URL 以 /message 结尾
