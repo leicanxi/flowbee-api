@@ -629,7 +629,8 @@ function SetupStepCards(props: { example: RequestExample }) {
 
       <li>
         <a
-          href='https://docs.flowbee.top'
+          // 改造#20：接入步骤直接跳到接入文档的具体页面，不再落到文档站首页
+          href='https://docs.flowbee.top/flowbee/access.html'
           target='_blank'
           rel='noreferrer'
           className={CARD_LINK_CLASS_NAME}

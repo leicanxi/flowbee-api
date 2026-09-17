@@ -56,8 +56,10 @@ export function UpdateCheckerSection({
   const handleCheckUpdates = async () => {
     setChecking(true)
     try {
+      // 改造#19：自建镜像后更新检查必须指向自己的 fork，
+      // 否则会拿上游官方 release 做版本号比对并引导用户跳官方 release 页（等于放弃本站定制）
       const response = await fetch(
-        'https://api.github.com/repos/Calcium-Ion/new-api/releases/latest',
+        'https://api.github.com/repos/leicanxi/flowbee-api/releases/latest',
         {
           headers: {
             Accept: 'application/vnd.github+json',
