@@ -16,13 +16,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { getRouteApi, useNavigate } from '@tanstack/react-router'
-import { Eye, EyeOff } from 'lucide-react'
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
+import { Coffee, Eye, EyeOff } from 'lucide-react'
 import { useState, useCallback, useMemo, lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { SectionPageLayout } from '@/components/layout'
 import { FadeIn } from '@/components/page-transition'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -320,6 +321,20 @@ export function Dashboard() {
   return (
     <SectionPageLayout>
       <SectionPageLayout.Title>{t(meta.titleKey)}</SectionPageLayout.Title>
+      {/* 概览是打开频率最高的一页，赞助入口挂在这里比藏在侧边栏底部有用得多。
+          用胶囊（Badge）而不是实心按钮：它是一个顺手的入口，
+          不该和页面里的主要操作抢注意力。 */}
+      {activeSection === 'overview' && (
+        <SectionPageLayout.Actions>
+          <Badge
+            render={<Link to='/sponsors' />}
+            className='hover:bg-primary/80 h-6 gap-1 px-2.5 text-xs'
+          >
+            <Coffee />
+            {t('Sponsor us')}
+          </Badge>
+        </SectionPageLayout.Actions>
+      )}
       <SectionPageLayout.Content>
         <div className='space-y-3 sm:space-y-4'>
           {activeSection !== 'overview' && (

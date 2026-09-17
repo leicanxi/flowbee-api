@@ -20,6 +20,7 @@ import { parseCurrencyDisplayType } from '@/lib/currency'
 
 import { CheckinSettingsSection } from '../general/checkin-settings-section'
 import { LotterySettingsSection } from '../general/lottery-settings-section'
+import { SponsorshipSettingsSection } from '../general/sponsorship-settings-section'
 import { PricingSection } from '../general/pricing-section'
 import { QuotaSettingsSection } from '../general/quota-settings-section'
 import { PaymentSettingsSection } from '../integrations/payment-settings-section'
@@ -226,6 +227,30 @@ const BILLING_SECTIONS = [
           anchorOutputShare: settings['lottery_setting.anchor_output_share'],
           anchorGroupRatio: settings['lottery_setting.anchor_group_ratio'],
           prizes: settings['lottery_setting.prizes'],
+        }}
+      />
+    ),
+  },
+  {
+    id: 'sponsorship',
+    titleKey: 'Support',
+    build: (settings: BillingSettings) => (
+      <SponsorshipSettingsSection
+        defaultValues={{
+          enabled: settings['sponsorship_setting.enabled'],
+          title: settings['sponsorship_setting.title'],
+          tiers: settings['sponsorship_setting.tiers'],
+          customLabel: settings['sponsorship_setting.custom_label'],
+          customIconUrl: settings['sponsorship_setting.custom_icon_url'],
+          customMinMoney: settings['sponsorship_setting.custom_min_money'],
+          customMaxMoney: settings['sponsorship_setting.custom_max_money'],
+          maxMessageLength: settings['sponsorship_setting.max_message_length'],
+          defaultMessage: settings['sponsorship_setting.default_message'],
+          earlyDeadline: settings['sponsorship_setting.early_supporter_deadline'],
+          continuousWindowMonths:
+            settings['sponsorship_setting.continuous_window_months'],
+          continuousMinCount:
+            settings['sponsorship_setting.continuous_min_count'],
         }}
       />
     ),

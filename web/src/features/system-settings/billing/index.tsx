@@ -138,6 +138,42 @@ const defaultBillingSettings: BillingSettings = {
     { id: 'lucky', name: '小惊喜', quota: 137000, total: 8, weight: 1 },
     { id: 'daily', name: '小福袋', quota: 13700, total: 45, weight: 1 },
   ]),
+  // 支持（赞助）。字段与默认值必须与后端
+  // setting/operation_setting/sponsorship_setting.go 完全一致 ——
+  // 它只在「从未保存过任何支持配置」时兜底，一旦不一致，
+  // 走兜底路径保存一次就会把后端的默认档位覆盖成这里写的值。
+  'sponsorship_setting.enabled': false,
+  'sponsorship_setting.title': '支持 FlowBee',
+  'sponsorship_setting.tiers': JSON.stringify([
+    {
+      id: 'coffee',
+      label: '一杯咖啡',
+      icon_url: 'https://img.remit.ee/i/iy8CP7nMOsgH',
+      money: 10,
+    },
+    {
+      id: 'cake',
+      label: '一份甜点',
+      icon_url: 'https://img.remit.ee/i/hDmAPrXEtflC',
+      money: 30,
+    },
+    {
+      id: 'meal',
+      label: '一顿饭',
+      icon_url: 'https://img.remit.ee/i/liwgI5R71BVT',
+      money: 50,
+    },
+  ]),
+  'sponsorship_setting.custom_label': '自定义',
+  'sponsorship_setting.custom_icon_url': 'https://img.remit.ee/i/etqE1hhkxZXb',
+  'sponsorship_setting.custom_min_money': 1,
+  'sponsorship_setting.custom_max_money': 2000,
+  'sponsorship_setting.max_message_length': 40,
+  'sponsorship_setting.default_message': '悄悄支持了一下',
+  // 2026-10-17 23:59:59 +08:00（上线后一个月）
+  'sponsorship_setting.early_supporter_deadline': 1792252799,
+  'sponsorship_setting.continuous_window_months': 2,
+  'sponsorship_setting.continuous_min_count': 2,
 }
 
 export function BillingSettings() {

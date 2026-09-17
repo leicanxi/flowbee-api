@@ -199,6 +199,30 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/subscription/epay/notify", controller.SubscriptionEpayNotify)
 		apiRouter.GET("/subscription/epay/return", controller.SubscriptionEpayReturn)
 		apiRouter.POST("/subscription/epay/return", anonymousRequestBodyLimit, controller.SubscriptionEpayReturn)
+
+		// Sponsorship (支持)：复用订阅那套易支付管道，但不落订阅表、不产生任何资产。
+		// 公开名单放在 /sponsors 而不是 /user 下 —— 它必须未登录也能读，
+		// 独立首页也是同源直连这个接口拿名单的。
+		apiRouter.GET("/sponsors", controller.GetSponsors)
+		sponsorshipRoute := apiRouter.Group("/sponsorship")
+		sponsorshipRoute.Use(middleware.UserAuth())
+		{
+			sponsorshipRoute.GET("/self", controller.GetSponsorshipSelf)
+			sponsorshipRoute.POST("/epay/pay", middleware.CriticalRateLimit(), controller.SponsorshipRequestEpay)
+		}
+		sponsorshipAdminRoute := apiRouter.Group("/sponsorship/admin")
+		sponsorshipAdminRoute.Use(middleware.AdminAuth())
+		{
+			sponsorshipAdminRoute.GET("/orders", controller.AdminListSponsorshipOrders)
+			sponsorshipAdminRoute.PUT("/orders/:id/message", controller.AdminUpdateSponsorshipMessage)
+		}
+
+		// Sponsorship payment callbacks (no auth)
+		apiRouter.POST("/sponsorship/epay/notify", anonymousRequestBodyLimit, controller.SponsorshipEpayNotify)
+		apiRouter.GET("/sponsorship/epay/notify", controller.SponsorshipEpayNotify)
+		apiRouter.GET("/sponsorship/epay/return", controller.SponsorshipEpayReturn)
+		apiRouter.POST("/sponsorship/epay/return", anonymousRequestBodyLimit, controller.SponsorshipEpayReturn)
+
 		optionRoute := apiRouter.Group("/option")
 		optionRoute.Use(middleware.RootAuth())
 		{

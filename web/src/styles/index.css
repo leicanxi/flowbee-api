@@ -428,6 +428,31 @@ For commercial licensing, please contact support@quantumnous.com
   .scroll-container:hover .animate-scroll-down {
     animation-play-state: paused;
   }
+
+  /* Horizontal drift for the supporter bubble wall.
+   * The track holds two copies of a row and slides exactly one copy's width
+   * (-50%), which is what makes the loop seamless. */
+  @keyframes drift-x {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-drift-x {
+    animation: drift-x 52s linear infinite;
+    will-change: transform;
+  }
+
+  /* Pausing on hover is what makes the wall usable: bubbles carry names and
+     messages that are meant to be read, and a moving target under the cursor
+     is not readable. focus-within covers keyboard users tabbing into one. */
+  .bubble-wall:hover .animate-drift-x,
+  .bubble-wall:focus-within .animate-drift-x {
+    animation-play-state: paused;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -435,6 +460,7 @@ For commercial licensing, please contact support@quantumnous.com
   .animate-appear-zoom,
   .animate-scroll-up,
   .animate-scroll-down,
+  .animate-drift-x,
   [data-slot='table'] tbody tr {
     animation: none !important;
     opacity: 1;

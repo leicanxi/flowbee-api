@@ -20,6 +20,7 @@ import {
   Activity,
   BookOpen,
   Box,
+  Coffee,
   CreditCard,
   FileText,
   FlaskConical,
@@ -133,6 +134,16 @@ export function useSidebarData(): SidebarData {
             title: t('Wishlist & Feedback'),
             url: 'https://post.flowbee.top',
             icon: Heart,
+          },
+          {
+            // 支持页是公开页面（访客也要能看到名单），放在个人组最底部是因为
+            // 它不是一个日常功能入口 —— 它是一次性的、自愿的动作，
+            // 混在钱包/福利/资料这种"每天都会点"的项里会被当成常规功能。
+            // badge 是侧边栏自带的强调样式（主色实心胶囊），用作"这是个新东西"的提示。
+            title: t('Sponsor us'),
+            url: '/sponsors',
+            icon: Coffee,
+            badge: t('New'),
           },
         ],
       },

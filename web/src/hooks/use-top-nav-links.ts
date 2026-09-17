@@ -100,5 +100,10 @@ export function useTopNavLinks(): TopNavLink[] {
     links.push({ title: t('About'), href: '/about' })
   }
 
+  // Support
+  if (modules?.support !== false) {
+    links.push({ title: t('Support'), href: '/sponsors' })
+  }
+
   return links
 }

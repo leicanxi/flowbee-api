@@ -334,6 +334,20 @@ export type BillingSettings = {
   'checkin_setting.enabled': boolean
   'checkin_setting.min_quota': number
   'checkin_setting.max_quota': number
+  // 支持（赞助）：档位以 JSON 字符串形式配置。金额是实付金额（本地货币），
+  // 不经过 QuotaPerUnit 换算 —— 支持是纯支出，不产生额度。
+  'sponsorship_setting.enabled': boolean
+  'sponsorship_setting.title': string
+  'sponsorship_setting.tiers': string
+  'sponsorship_setting.custom_label': string
+  'sponsorship_setting.custom_icon_url': string
+  'sponsorship_setting.custom_min_money': number
+  'sponsorship_setting.custom_max_money': number
+  'sponsorship_setting.max_message_length': number
+  'sponsorship_setting.default_message': string
+  'sponsorship_setting.early_supporter_deadline': number
+  'sponsorship_setting.continuous_window_months': number
+  'sponsorship_setting.continuous_min_count': number
   // 改造#12：生日抽奖（奖池以 JSON 字符串形式配置）
   'lottery_setting.enabled': boolean
   'lottery_setting.start_time': number
