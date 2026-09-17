@@ -50,7 +50,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { IconBadge, type IconBadgeTone } from '@/components/ui/icon-badge'
 import { createApiKey, fetchTokenKey, getApiKeys } from '@/features/keys/api'
-import { DEFAULT_GROUP } from '@/features/keys/constants'
 import type {
   ApiKey,
   ApiKeyFormData,
@@ -185,6 +184,10 @@ function buildCurlCommand(args: {
   ].join('\n')
 }
 
+// 默认密钥固定建在 auto 分组。group 传空串时后端会当成「就用用户自己的分组」
+// （middleware/auth.go 里 token 分组为空就回落到用户分组），新人多半落在 default 分组，
+// 等于一上来就被限死在一条路上；auto 是「免费优先＞3折站补＞其他」，开箱即用。
+// cross_group_retry 只对 auto 分组生效，这里跟后台 DefaultUseAutoGroup 的口径保持一致。
 function buildDefaultKeyPayload(name: string): ApiKeyFormData {
   return {
     name,
@@ -194,9 +197,9 @@ function buildDefaultKeyPayload(name: string): ApiKeyFormData {
     model_limits_enabled: false,
     model_limits: '',
     allow_ips: '',
-    group: DEFAULT_GROUP,
+    group: 'auto',
     auto_groups: [],
-    cross_group_retry: false,
+    cross_group_retry: true,
   }
 }
 
