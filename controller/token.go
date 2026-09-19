@@ -255,20 +255,48 @@ func GetTokenUsage(c *gin.Context) {
 		expiredAt = 0
 	}
 
+	// 上面那几个字段都是**令牌**口径。而令牌表单默认就是不限额度，此时 total_available 恒为 0，
+	// 客户端拿不到"用户还剩多少钱"——真正的上限在用户账户上，只有下面两个字段能提供。
+	//
+	// 取不到时**不能让整个请求失败**：这个接口同时被客户端用来校验密钥，
+	// 硬失败会把一次数据库抖动放大成"密钥无效"，所以降级为记日志 + 省略字段。
+	// 老客户端读到多余的键会自行忽略，行为完全不变。
+	userQuota, userUsedQuota := 0, 0
+	userQuotaOK := true
+	if quota, err := model.GetUserQuota(token.UserId, false); err != nil {
+		common.SysError("failed to get user quota for token usage: " + err.Error())
+		userQuotaOK = false
+	} else {
+		userQuota = quota
+	}
+	if used, err := model.GetUserUsedQuota(token.UserId); err != nil {
+		common.SysError("failed to get user used quota for token usage: " + err.Error())
+		userQuotaOK = false
+	} else {
+		userUsedQuota = used
+	}
+
+	data := gin.H{
+		"object":               "token_usage",
+		"name":                 token.Name,
+		"total_granted":        token.RemainQuota + token.UsedQuota,
+		"total_used":           token.UsedQuota,
+		"total_available":      token.RemainQuota,
+		"unlimited_quota":      token.UnlimitedQuota,
+		"model_limits":         token.GetModelLimitsMap(),
+		"model_limits_enabled": token.ModelLimitsEnabled,
+		"expires_at":           expiredAt,
+	}
+	if userQuotaOK {
+		// 原始额度单位，和 total_available 同一口径，换算成金额交给客户端。
+		data["user_quota"] = userQuota
+		data["user_used_quota"] = userUsedQuota
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"code":    true,
 		"message": "ok",
-		"data": gin.H{
-			"object":               "token_usage",
-			"name":                 token.Name,
-			"total_granted":        token.RemainQuota + token.UsedQuota,
-			"total_used":           token.UsedQuota,
-			"total_available":      token.RemainQuota,
-			"unlimited_quota":      token.UnlimitedQuota,
-			"model_limits":         token.GetModelLimitsMap(),
-			"model_limits_enabled": token.ModelLimitsEnabled,
-			"expires_at":           expiredAt,
-		},
+		"data":    data,
 	})
 }
 
