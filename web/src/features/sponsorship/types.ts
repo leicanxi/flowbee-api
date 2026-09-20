@@ -45,6 +45,17 @@ export interface SponsorshipTierOption {
   custom: boolean
 }
 
+/** 本月筹集进度。按自然月统计，月初归零。 */
+export interface SponsorshipGoal {
+  name: string
+  target_money: number
+  raised_money: number
+  supporter_count: number
+  support_count: number
+  period_start: number
+  achieved: boolean
+}
+
 export interface SponsorshipInfo {
   enabled: boolean
   title: string
@@ -54,6 +65,8 @@ export interface SponsorshipInfo {
   max_message_length: number
   default_message: string
   sponsors: SponsorEntry[]
+  /** 未配置筹集目标时为 null。 */
+  goal: SponsorshipGoal | null
 }
 
 export interface UserSponsorshipStats {

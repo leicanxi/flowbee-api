@@ -363,6 +363,57 @@ func ListSponsors(limit int) ([]SponsorEntry, error) {
 	return entries, nil
 }
 
+// SponsorshipGoal 本月的筹集进度。
+//
+// 按自然月统计，月初归零。月份边界取服务器本地时区 —— 用 UTC 的话，
+// UTC+8 的用户会看到目标在每月 1 号早上 8 点才重置，对不上"这个月"的直觉。
+type SponsorshipGoal struct {
+	Name           string  `json:"name"`
+	TargetMoney    float64 `json:"target_money"`
+	RaisedMoney    float64 `json:"raised_money"`
+	SupporterCount int64   `json:"supporter_count"`
+	SupportCount   int64   `json:"support_count"`
+	PeriodStart    int64   `json:"period_start"`
+	Achieved       bool    `json:"achieved"`
+}
+
+// GetSponsorshipGoal 统计本月的支持进度。目标未配置时返回 nil，调用方据此不展示这一块。
+func GetSponsorshipGoal() (*SponsorshipGoal, error) {
+	setting := operation_setting.GetSponsorshipSetting()
+	target, visible := setting.SponsorshipGoalTarget()
+	if !visible {
+		return nil, nil
+	}
+
+	now := time.Now()
+	periodStart := time.Date(
+		now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location(),
+	).Unix()
+
+	var aggregate struct {
+		RaisedMoney    float64
+		SupporterCount int64
+		SupportCount   int64
+	}
+	// 只统计已付款的记录：pending 的单子还没真正收到钱，算进进度会让数字虚高。
+	if err := DB.Model(&SponsorshipOrder{}).
+		Select("COALESCE(SUM(money), 0) AS raised_money, COUNT(DISTINCT user_id) AS supporter_count, COUNT(*) AS support_count").
+		Where("status = ? AND complete_time >= ?", common.TopUpStatusSuccess, periodStart).
+		Scan(&aggregate).Error; err != nil {
+		return nil, err
+	}
+
+	return &SponsorshipGoal{
+		Name:           setting.SponsorshipGoalName(),
+		TargetMoney:    target,
+		RaisedMoney:    aggregate.RaisedMoney,
+		SupporterCount: aggregate.SupporterCount,
+		SupportCount:   aggregate.SupportCount,
+		PeriodStart:    periodStart,
+		Achieved:       aggregate.RaisedMoney >= target,
+	}, nil
+}
+
 // GetUserSponsorshipStats 返回某个用户自己的支持概况。
 func GetUserSponsorshipStats(userId int) (*UserSponsorshipStats, error) {
 	if userId <= 0 {

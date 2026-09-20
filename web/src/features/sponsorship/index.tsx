@@ -23,10 +23,10 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { PublicLayout } from '@/components/layout'
-import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/stores/auth-store'
 
 import { getMySponsorship, getSponsorshipInfo } from './api'
+import { GoalProgress } from './components/goal-progress'
 import { MySupport } from './components/my-support'
 import { SponsorWall } from './components/sponsor-wall'
 import { SupportSection } from './components/support-section'
@@ -111,31 +111,28 @@ export function Sponsors(props: { paymentResult?: SponsorshipPaymentResult }) {
 
   return (
     <PublicLayout>
-      <div className='mx-auto max-w-4xl space-y-12 pb-16 md:space-y-14'>
+      <div className='mx-auto max-w-4xl space-y-10 pb-16 md:space-y-12'>
         <header className='max-w-2xl'>
           <h1 className='text-3xl font-semibold tracking-tight text-balance md:text-4xl'>
-            {t('Supported by people who wanted it to keep running')}
+            {t('Making this sustainable')}
           </h1>
           <p className='text-muted-foreground mt-4 leading-relaxed'>
-            {t('Free and subsidised calls are not something the site owner can carry alone — a few people quietly chip in. Every amount is thanked the same way, and nobody is ranked by how much they gave.')}
+            {t('Servers, API bills and basic upkeep are currently carried by the site owner alone. He is still a student, and holding it up by himself is not easy long term. If this place has helped you and you happen to have something to spare, supporting it is welcome and voluntary — it is what keeps this going, and what makes it steadier for everyone.')}
           </p>
         </header>
 
-        <section aria-label={t('Supporters')}>
-          <SponsorWall sponsors={info.sponsors} />
-        </section>
-
-        <div className='text-center'>
-          <Button
-            render={<a href='#support' />}
-            className='h-11 rounded-full px-7 text-sm font-semibold'
-          >
-            {t('I want to support too')}
-          </Button>
-        </div>
+        {info.goal && (
+          <section aria-label={t('Funding goal')}>
+            <GoalProgress goal={info.goal} />
+          </section>
+        )}
 
         <section id='support' className='scroll-mt-24' aria-label={t('Support')}>
           <SupportSection info={info} isAuthenticated={isAuthenticated} />
+        </section>
+
+        <section aria-label={t('Supporters')}>
+          <SponsorWall sponsors={info.sponsors} />
         </section>
 
         <section aria-label={t('Your support')}>

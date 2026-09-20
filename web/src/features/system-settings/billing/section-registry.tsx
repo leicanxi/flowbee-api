@@ -239,6 +239,9 @@ const BILLING_SECTIONS = [
         defaultValues={{
           enabled: settings['sponsorship_setting.enabled'],
           title: settings['sponsorship_setting.title'],
+          goalEnabled: settings['sponsorship_setting.goal_enabled'],
+          goalName: settings['sponsorship_setting.goal_name'],
+          goalTargetMoney: settings['sponsorship_setting.goal_target_money'],
           tiers: settings['sponsorship_setting.tiers'],
           customLabel: settings['sponsorship_setting.custom_label'],
           customIconUrl: settings['sponsorship_setting.custom_icon_url'],

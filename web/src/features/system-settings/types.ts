@@ -338,6 +338,9 @@ export type BillingSettings = {
   // 不经过 QuotaPerUnit 换算 —— 支持是纯支出，不产生额度。
   'sponsorship_setting.enabled': boolean
   'sponsorship_setting.title': string
+  'sponsorship_setting.goal_enabled': boolean
+  'sponsorship_setting.goal_name': string
+  'sponsorship_setting.goal_target_money': number
   'sponsorship_setting.tiers': string
   'sponsorship_setting.custom_label': string
   'sponsorship_setting.custom_icon_url': string

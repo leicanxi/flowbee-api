@@ -52,10 +52,27 @@ type SponsorshipInfoResponse struct {
 	MaxMessageLength int                     `json:"max_message_length"`
 	DefaultMessage   string                  `json:"default_message"`
 	Sponsors         []model.SponsorEntry    `json:"sponsors"`
+	// Goal 为本月筹集进度，未配置目标时为 null。
+	Goal *model.SponsorshipGoal `json:"goal"`
 }
 
+// buildSponsorshipOptions 组装前端渲染的金额选项。
+//
+// 自定义档排在最前面：它是唯一需要用户自己动手填的选项，放在第一位时
+// 四个格子呈现的是"从自由到固定"的秩序；夹在中间或放在末尾，视线扫到最后
+// 才碰到一个输入框，反而像是个补充说明。
 func buildSponsorshipOptions(setting *operation_setting.SponsorshipSetting) []SponsorshipTierOption {
 	options := make([]SponsorshipTierOption, 0, len(setting.Tiers)+1)
+	customLabel := setting.CustomLabel
+	if customLabel == "" {
+		customLabel = "自定义"
+	}
+	options = append(options, SponsorshipTierOption{
+		Id:      sponsorshipCustomTierId,
+		Label:   customLabel,
+		IconUrl: setting.CustomIconUrl,
+		Custom:  true,
+	})
 	for _, tier := range setting.Tiers {
 		// 金额或图标缺失的档位直接跳过：渲染出来是个空白格子，
 		// 比少一个选项更糟。
@@ -69,16 +86,6 @@ func buildSponsorshipOptions(setting *operation_setting.SponsorshipSetting) []Sp
 			Money:   tier.Money,
 		})
 	}
-	customLabel := setting.CustomLabel
-	if customLabel == "" {
-		customLabel = "自定义"
-	}
-	options = append(options, SponsorshipTierOption{
-		Id:      sponsorshipCustomTierId,
-		Label:   customLabel,
-		IconUrl: setting.CustomIconUrl,
-		Custom:  true,
-	})
 	return options
 }
 
@@ -104,6 +111,11 @@ func GetSponsors(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	goal, err := model.GetSponsorshipGoal()
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
 	minMoney, maxMoney := setting.SponsorshipCustomBounds()
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -116,6 +128,7 @@ func GetSponsors(c *gin.Context) {
 			MaxMessageLength: setting.SponsorshipMaxMessageLength(),
 			DefaultMessage:   setting.SponsorshipDefaultMessage(),
 			Sponsors:         sponsors,
+			Goal:             goal,
 		},
 	})
 }

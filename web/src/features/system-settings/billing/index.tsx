@@ -144,6 +144,9 @@ const defaultBillingSettings: BillingSettings = {
   // 走兜底路径保存一次就会把后端的默认档位覆盖成这里写的值。
   'sponsorship_setting.enabled': false,
   'sponsorship_setting.title': '支持 FlowBee',
+  'sponsorship_setting.goal_enabled': true,
+  'sponsorship_setting.goal_name': '每月服务器与 API 开销',
+  'sponsorship_setting.goal_target_money': 1500,
   'sponsorship_setting.tiers': JSON.stringify([
     {
       id: 'coffee',

@@ -107,6 +107,9 @@ function toServerTiers(tiers: Values['tiers']): RawTier[] {
 const schema = z.object({
   enabled: z.boolean(),
   title: z.string(),
+  goalEnabled: z.boolean(),
+  goalName: z.string(),
+  goalTargetMoney: z.coerce.number().min(0),
   tiers: z.array(tierSchema),
   customLabel: z.string(),
   customIconUrl: z.string(),
@@ -124,6 +127,9 @@ type Values = z.infer<typeof schema>
 export interface SponsorshipSettingsDefaults {
   enabled: boolean
   title: string
+  goalEnabled: boolean
+  goalName: string
+  goalTargetMoney: number
   /** 配置里原样存下来的档位 JSON 字符串 */
   tiers: string
   customLabel: string
@@ -162,6 +168,9 @@ export function SponsorshipSettingsSection({
     defaultValues: {
       enabled: defaultValues.enabled,
       title: defaultValues.title,
+      goalEnabled: defaultValues.goalEnabled,
+      goalName: defaultValues.goalName,
+      goalTargetMoney: defaultValues.goalTargetMoney,
       tiers: initialTiers,
       customLabel: defaultValues.customLabel,
       customIconUrl: defaultValues.customIconUrl,
@@ -193,6 +202,13 @@ export function SponsorshipSettingsSection({
 
     push('enabled', String(values.enabled), String(defaultValues.enabled))
     push('title', values.title, defaultValues.title)
+    push('goal_enabled', String(values.goalEnabled), String(defaultValues.goalEnabled))
+    push('goal_name', values.goalName, defaultValues.goalName)
+    push(
+      'goal_target_money',
+      String(values.goalTargetMoney),
+      String(defaultValues.goalTargetMoney)
+    )
 
     const serializedTiers = JSON.stringify(toServerTiers(values.tiers))
     push('tiers', serializedTiers, initialTiersJson)
@@ -293,12 +309,73 @@ export function SponsorshipSettingsSection({
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name='goalEnabled'
+                render={({ field }) => (
+                  <SettingsSwitchItem>
+                    <SettingsSwitchContent>
+                      <FormLabel>{t('Show the funding goal')}</FormLabel>
+                      <FormDescription>
+                        {t(
+                          'Progress counts the current calendar month and resets on the 1st. Set the target to 0 to hide it.'
+                        )}
+                      </FormDescription>
+                    </SettingsSwitchContent>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={updateOption.isPending || isSubmitting}
+                      />
+                    </FormControl>
+                  </SettingsSwitchItem>
+                )}
+              />
+
+              {form.watch('goalEnabled') && (
+                <div className='grid gap-6 sm:grid-cols-2'>
+                  <FormField
+                    control={form.control}
+                    name='goalName'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('Goal name')}</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {t('Shown next to the progress bar')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name='goalTargetMoney'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('Monthly target amount')}</FormLabel>
+                        <FormControl>
+                          <Input type='number' min={0} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          {t('0 means the goal is not shown')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+
               <div className='space-y-4'>
                 <div>
                   <FormLabel>{t('Amount options')}</FormLabel>
                   <FormDescription>
                     {t(
-                      'Shown as a row of tiles. The last tile is always the custom amount.'
+                      'Shown as a row of tiles. The custom amount is always the first tile.'
                     )}
                   </FormDescription>
                 </div>

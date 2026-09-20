@@ -44,6 +44,18 @@ type SponsorshipSetting struct {
 	CustomMinMoney float64 `json:"custom_min_money"`
 	CustomMaxMoney float64 `json:"custom_max_money"`
 
+	// ---- 筹集目标 ----
+	//
+	// 目标按月重置：口径是「本月收到的支持」对「每月固定开销」，与服务器、
+	// API 这类持续支出对得上，达成后下月自动重新开始。刻意不做成一次性总额 ——
+	// 一次性目标达成之后这一块就没内容可展示了，而月费是每个月都会再来一次的。
+	//
+	// 名称与目标金额都留成后台可配，不要写进代码：开销会变，
+	// 让人改一次代码才能调整目标不合适。
+	GoalEnabled     bool    `json:"goal_enabled"`
+	GoalName        string  `json:"goal_name"`
+	GoalTargetMoney float64 `json:"goal_target_money"`
+
 	// 寄语。不写寄语时用 DefaultMessage 兜底，让名单里的每一格都有内容，
 	// 不会出现一片空白。
 	MaxMessageLength int    `json:"max_message_length"`
@@ -82,6 +94,10 @@ var sponsorshipSetting = SponsorshipSetting{
 	MaxMessageLength: 40,
 	DefaultMessage:   "悄悄支持了一下",
 
+	GoalEnabled:     true,
+	GoalName:        "每月服务器与 API 开销",
+	GoalTargetMoney: 1500,
+
 	// 2026-10-17 23:59:59 +08:00：上线后一个月的窗口。
 	// 现在是"人人都拿得到"，但它是永久的，以后来的人拿不到 —— 这正是它的作用。
 	EarlySupporterDeadline: 1792252799,
@@ -111,6 +127,25 @@ func (s *SponsorshipSetting) FindSponsorshipTier(id string) *SponsorshipTier {
 		}
 	}
 	return nil
+}
+
+// SponsorshipGoalTarget 返回筹集目标是否展示、以及目标金额。
+//
+// 两个条件同时成立才展示：开关打开，且目标金额是正数。后台把金额清成 0
+// （还没想好填多少）时按"先不展示"处理，而不是在页面上显示一个 0 元的目标。
+func (s *SponsorshipSetting) SponsorshipGoalTarget() (float64, bool) {
+	if !s.GoalEnabled || s.GoalTargetMoney <= 0 {
+		return 0, false
+	}
+	return s.GoalTargetMoney, true
+}
+
+// SponsorshipGoalName 返回目标名称，未配置时兜底一个中性的说法。
+func (s *SponsorshipSetting) SponsorshipGoalName() string {
+	if s.GoalName == "" {
+		return "每月开销"
+	}
+	return s.GoalName
 }
 
 // SponsorshipMaxMessageLength 返回寄语长度上限（按字符数），未配置时兜底 40。

@@ -212,7 +212,26 @@ export function SupportSection(props: {
   const [message, setMessage] = useState('')
   const [anonymous, setAnonymous] = useState(false)
   const [payingMethod, setPayingMethod] = useState('')
+  // 金额区默认收起。页面第一屏留给"为什么需要支持"（目标、进度、已支持人数），
+  // 付款表单摆在下面一层，由用户自己决定什么时候展开。
+  const [joined, setJoined] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
+  const tiersRef = useRef<HTMLDivElement>(null)
+
+  // 展开金额区后把它带进视野：手机上它落在首屏之下，
+  // 点了按钮却没反应的话，用户会以为按钮坏了。
+  useEffect(() => {
+    if (!joined) {
+      return
+    }
+    const reduceMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)'
+    ).matches
+    tiersRef.current?.scrollIntoView({
+      behavior: reduceMotion ? 'auto' : 'smooth',
+      block: 'nearest',
+    })
+  }, [joined])
 
   // 选中档位后把下面展开的区块带进视野。
   //
@@ -310,9 +329,25 @@ export function SupportSection(props: {
     )
   }
 
+  // 收起态只留一个按钮。这是单向门：展开之后按钮就退场，表单接管这一块 ——
+  // 让人再点一次把正在填的表单收起来没有意义。
+  if (!joined) {
+    return (
+      <div className='text-center'>
+        <Button
+          type='button'
+          onClick={() => setJoined(true)}
+          className='h-11 rounded-full px-8 text-sm font-semibold'
+        >
+          {t('I want to join in')}
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <div className='mx-auto w-full max-w-2xl'>
-      <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
+      <div ref={tiersRef} className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
         {props.info.options.map((option) => (
           <TierTile
             key={option.id}
