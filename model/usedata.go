@@ -170,6 +170,17 @@ func GetQuotaDataGroupByUser(startTime int64, endTime int64) (quotaData []*Quota
 	return quotaDatas, err
 }
 
+// GetGroupUsedTokenTotal 返回某个分组累计消耗的 token 数。
+// quota_data 是按小时聚合的看板表且不设保留期，所以这个值从建站起持续累加。
+func GetGroupUsedTokenTotal(group string) (int64, error) {
+	var total int64
+	err := DB.Table("quota_data").
+		Select("COALESCE(sum(token_used), 0)").
+		Where("use_group = ?", group).
+		Scan(&total).Error
+	return total, err
+}
+
 func GetAllQuotaDates(startTime int64, endTime int64, username string) (quotaData []*QuotaData, err error) {
 	if username != "" {
 		return GetQuotaDataByUsername(username, startTime, endTime)
