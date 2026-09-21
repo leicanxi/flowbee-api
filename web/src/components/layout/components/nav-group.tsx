@@ -112,9 +112,17 @@ export function NavGroup({ title, items }: NavGroupProps) {
 
 /**
  * Navigation badge component
+ *
+ * 改造#22：原尺寸跟随 Badge 默认的 h-5 / text-xs，在侧边栏（更小的字号基准）
+ * 里显得又高又大，像一个按钮而不是「新」的提示。收紧到 h-4 / 10px 并去掉
+ * 上下 padding，让它退回标记（marker）的视觉层级。
  */
 function NavBadge({ children }: { children: ReactNode }) {
-  return <Badge className='shrink-0 px-1 py-0 text-xs'>{children}</Badge>
+  return (
+    <Badge className='h-4 shrink-0 px-1 py-0 text-[10px] leading-none'>
+      {children}
+    </Badge>
+  )
 }
 
 /**

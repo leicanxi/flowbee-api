@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router'
-import { Coffee, Eye, EyeOff } from 'lucide-react'
+import { Coffee, Eye, EyeOff, Users } from 'lucide-react'
 import { useState, useCallback, useMemo, lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -326,6 +326,23 @@ export function Dashboard() {
           不该和页面里的主要操作抢注意力。 */}
       {activeSection === 'overview' && (
         <SectionPageLayout.Actions>
+          {/* 改造#22：QQ 群入口挂在「赞助一下」左侧。用 outline（描边、无填充）
+              而不是和赞助一样的实心主色胶囊 —— 社群是求助通道，不是转化入口，
+              两个实心胶囊并排会互相抢注意力，也会让人以为都要「花钱/加入」。 */}
+          <Badge
+            variant='outline'
+            render={
+              <a
+                href='https://qm.qq.com/q/2p372Rpgyc'
+                target='_blank'
+                rel='noreferrer'
+              />
+            }
+            className='h-6 gap-1 px-2.5 text-xs'
+          >
+            <Users />
+            {t('Join QQ Group')}
+          </Badge>
           <Badge
             render={<Link to='/sponsors' />}
             className='hover:bg-primary/80 h-6 gap-1 px-2.5 text-xs'
