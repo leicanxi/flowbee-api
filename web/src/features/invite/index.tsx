@@ -38,11 +38,14 @@ import { LotteryDrawCard } from '@/features/lottery/components/lottery-draw-card
  * 改造#3：将原本位于钱包页的「推荐计划」卡片与个人资料页的「签到」
  * 卡片集中到侧边栏「福利」入口下，方便用户在手机上集中操作。
  *
- * 改造#8：桌面端双列 —— 左列：等级在上、邀请在下（同一 flex 列，间距固定
+ * 改造#8：桌面端双列 —— 左列：档位摘要条在上、邀请在下（同一 flex 列，间距固定
  * 如个人资料页，避免签到卡跨行把网格拉高后标题上方出现空隙）；右列：签到。
- * 移动端单列 M1'：等级 → 邀请 → 签到。
+ * 移动端单列 M1'：档位摘要条 → 邀请 → 签到。
  *
- * 改造#9：福利等级卡组上移到邀请卡之前，作为福利页的主视觉入口。
+ * 改造#9：档位摘要条上移到邀请卡之前，作为福利页的主视觉入口。
+ *
+ * 改造#27：摘要在上方的 Lv1–Lv5 轮播大卡已整块删除（与摘要条重复，详见
+ * tier-status-card.tsx 文件头），左列只剩摘要条与邀请卡，列布局本身不变。
  *
  * 改造#12：右列新增「生日抽奖」卡（位于签到卡之上），受服务端活动开关控制。
  * 抽奖是限时活动，关闭后整张卡自动消失，不影响常驻布局。
@@ -107,8 +110,8 @@ export function Invite() {
         <SectionPageLayout.Title>{t('Welfare')}</SectionPageLayout.Title>
         <SectionPageLayout.Content>
           <div className='mx-auto flex w-full max-w-7xl flex-col gap-4 sm:gap-5 lg:grid lg:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)] lg:items-start'>
-            {/* 左列 wrapper：等级 + 邀请（改造#9：等级卡上移）。桌面同列上下紧排
-                （间距与个人资料页卡片一致）；若把等级/邀请拆成两个独立 grid item，
+            {/* 左列 wrapper：档位摘要条 + 邀请（改造#9：摘要条上移）。桌面同列上下紧排
+                （间距与个人资料页卡片一致）；若把摘要条/邀请拆成两个独立 grid item，
                 右列签到卡(row-span)会把网格行拉高，导致卡片之间出现空隙。 */}
             <div className='flex min-w-0 flex-col gap-4 sm:gap-5'>
               <TierStatusCard user={user} />
