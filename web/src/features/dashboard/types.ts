@@ -255,12 +255,15 @@ export interface ProcessedUserChartData {
 // Announcement Types
 // ============================================================================
 
+export type AnnouncementDisplayMode = 'notification' | 'banner'
+
 export interface AnnouncementItem {
   id?: number
   content: string
   publishDate?: string
   type?: 'default' | 'ongoing' | 'success' | 'warning' | 'error'
   extra?: string
+  displayMode?: AnnouncementDisplayMode
 }
 
 // ============================================================================

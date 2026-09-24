@@ -26,11 +26,15 @@ interface NotificationState {
   readAnnouncementKeys: string[]
   // Timestamp of last "Close Today" action
   closedUntilDate: string | null
+  // Announcement keys the user dismissed from the top banner
+  dismissedBannerKeys: string[]
 
   // Actions
   markNoticeRead: (noticeContent: string) => void
   markAnnouncementsRead: (keys: string[]) => void
   setClosedUntilDate: (date: string | null) => void
+  dismissBanner: (key: string) => void
+  isBannerDismissed: (key: string) => boolean
   isAnnouncementRead: (key: string) => boolean
   isNoticeClosed: () => boolean
 }
@@ -45,6 +49,7 @@ export const useNotificationStore = create<NotificationState>()(
       lastReadNotice: '',
       readAnnouncementKeys: [],
       closedUntilDate: null,
+      dismissedBannerKeys: [],
 
       markNoticeRead: (noticeContent: string) => {
         // Persist the full trimmed content so edits beyond 100 chars register
@@ -62,6 +67,18 @@ export const useNotificationStore = create<NotificationState>()(
 
       setClosedUntilDate: (date: string | null) => {
         set({ closedUntilDate: date })
+      },
+
+      dismissBanner: (key: string) => {
+        set((state) => ({
+          dismissedBannerKeys: [
+            ...new Set([...state.dismissedBannerKeys, key]),
+          ],
+        }))
+      },
+
+      isBannerDismissed: (key: string) => {
+        return get().dismissedBannerKeys.includes(key)
       },
 
       isAnnouncementRead: (key: string) => {
@@ -82,6 +99,7 @@ export const useNotificationStore = create<NotificationState>()(
         lastReadNotice: state.lastReadNotice,
         readAnnouncementKeys: state.readAnnouncementKeys,
         closedUntilDate: state.closedUntilDate,
+        dismissedBannerKeys: state.dismissedBannerKeys,
       }),
     }
   )

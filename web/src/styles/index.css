@@ -453,6 +453,30 @@ For commercial licensing, please contact support@quantumnous.com
   .bubble-wall:focus-within .animate-drift-x {
     animation-play-state: paused;
   }
+
+  /* Announcement banner marquee. The track holds two copies of the message and
+   * slides exactly one copy's width (-50%), which is what makes the loop
+   * seamless. Duration is set inline so the travel speed stays constant no
+   * matter how long the message is. */
+  @keyframes announcement-marquee {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-announcement-marquee {
+    animation: announcement-marquee 20s linear infinite;
+    will-change: transform;
+  }
+
+  /* Pausing under the cursor is what keeps a scrolling message readable. */
+  .announcement-banner:hover .animate-announcement-marquee,
+  .announcement-banner:focus-within .animate-announcement-marquee {
+    animation-play-state: paused;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -461,6 +485,7 @@ For commercial licensing, please contact support@quantumnous.com
   .animate-scroll-up,
   .animate-scroll-down,
   .animate-drift-x,
+  .animate-announcement-marquee,
   [data-slot='table'] tbody tr {
     animation: none !important;
     opacity: 1;

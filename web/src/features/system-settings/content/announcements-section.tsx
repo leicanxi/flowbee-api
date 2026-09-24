@@ -66,12 +66,15 @@ import { SettingsSwitchField } from '../components/settings-form-layout'
 import { SettingsSection } from '../components/settings-section'
 import { useUpdateOption } from '../hooks/use-update-option'
 
+type AnnouncementDisplayMode = 'notification' | 'banner'
+
 type Announcement = {
   id: number
   content: string
   publishDate: string
   type: 'default' | 'ongoing' | 'success' | 'warning' | 'error'
   extra?: string
+  displayMode?: AnnouncementDisplayMode
 }
 
 type AnnouncementsSectionProps = {
@@ -90,6 +93,7 @@ const announcementSchema = z.object({
     .string()
     .max(100, 'Extra must be less than 100 characters')
     .optional(),
+  displayMode: z.enum(['notification', 'banner']),
 })
 
 type AnnouncementFormValues = z.infer<typeof announcementSchema>
@@ -129,6 +133,11 @@ const typeOptions = [
   },
 ]
 
+const displayModeOptions = [
+  { value: 'notification', label: 'Notification center' },
+  { value: 'banner', label: 'Top banner' },
+]
+
 export function AnnouncementsSection({
   enabled,
   data,
@@ -152,6 +161,7 @@ export function AnnouncementsSection({
       publishDate: new Date().toISOString(),
       type: 'default',
       extra: '',
+      displayMode: 'notification',
     },
   })
 
@@ -195,6 +205,7 @@ export function AnnouncementsSection({
       publishDate: new Date().toISOString(),
       type: 'default',
       extra: '',
+      displayMode: 'notification',
     })
     setShowDialog(true)
   }
@@ -206,6 +217,7 @@ export function AnnouncementsSection({
       publishDate: announcement.publishDate,
       type: announcement.type,
       extra: announcement.extra || '',
+      displayMode: announcement.displayMode || 'notification',
     })
     setShowDialog(true)
   }
@@ -420,6 +432,23 @@ export function AnnouncementsSection({
               cell: (announcement) => announcement.extra || '-',
             },
             {
+              id: 'display-mode',
+              header: t('Display'),
+              cell: (announcement) => (
+                <StatusBadge
+                  label={
+                    announcement.displayMode === 'banner'
+                      ? t('Top banner')
+                      : t('Notification center')
+                  }
+                  variant={
+                    announcement.displayMode === 'banner' ? 'info' : 'neutral'
+                  }
+                  copyable={false}
+                />
+              ),
+            },
+            {
               id: 'actions',
               header: t('Actions'),
               cell: (announcement) => (
@@ -577,6 +606,44 @@ export function AnnouncementsSection({
                   <FormDescription>
                     {t(
                       'Optional supplementary information (max 100 characters)'
+                    )}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='displayMode'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Display')}</FormLabel>
+                  <Select
+                    items={displayModeOptions.map((option) => ({
+                      value: option.value,
+                      label: t(option.label),
+                    }))}
+                    onValueChange={field.onChange}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('Select display mode')} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent alignItemWithTrigger={false}>
+                      <SelectGroup>
+                        {displayModeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {t(option.label)}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    {t(
+                      'Top banner appears above the header on every dashboard page.'
                     )}
                   </FormDescription>
                   <FormMessage />

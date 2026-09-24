@@ -155,6 +155,9 @@ func validateAnnouncements(announcementsStr string) error {
 	validTypes := map[string]bool{
 		"default": true, "ongoing": true, "success": true, "warning": true, "error": true,
 	}
+	validDisplayModes := map[string]bool{
+		"notification": true, "banner": true,
+	}
 	for i, ann := range list {
 		content, ok := ann["content"].(string)
 		if !ok || content == "" {
@@ -175,6 +178,13 @@ func validateAnnouncements(announcementsStr string) error {
 			if typeStr, ok := t.(string); ok {
 				if !validTypes[typeStr] {
 					return fmt.Errorf("第%d个公告的类型值不合法", i+1)
+				}
+			}
+		}
+		if dm, exists := ann["displayMode"]; exists {
+			if dmStr, ok := dm.(string); ok {
+				if !validDisplayModes[dmStr] {
+					return fmt.Errorf("第%d个公告的展示方式值不合法", i+1)
 				}
 			}
 		}

@@ -40,6 +40,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { getAnnouncementKey } from '@/lib/announcement'
 import { getAnnouncementColorClass } from '@/lib/colors'
 import { formatDateTimeObject } from '@/lib/time'
 import { cn } from '@/lib/utils'
@@ -137,19 +138,6 @@ function AnnouncementDot({ type }: { type?: string }) {
   )
 }
 
-function getAnnouncementRenderKey(announcement: AnnouncementItem): string {
-  if (announcement.id !== undefined && announcement.id !== null) {
-    return `id:${announcement.id}`
-  }
-
-  return JSON.stringify({
-    content: announcement.content ?? '',
-    extra: announcement.extra ?? '',
-    publishDate: announcement.publishDate ?? '',
-    type: announcement.type ?? '',
-  })
-}
-
 /**
  * Empty state component
  */
@@ -242,7 +230,7 @@ function AnnouncementsContent({
     <ScrollArea className='h-[min(52vh,28rem)] pr-3'>
       <div className='flex flex-col'>
         {announcements.map((item, idx) => {
-          const announcementKey = getAnnouncementRenderKey(item)
+          const announcementKey = getAnnouncementKey(item)
           const publishDate = item.publishDate
             ? new Date(item.publishDate)
             : null

@@ -16,6 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useEffect, useRef } from 'react'
+
 import { ConfigDrawer } from '@/components/config-drawer'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { NotificationPopover } from '@/components/notification-popover'
@@ -25,7 +27,8 @@ import { useNotifications } from '@/hooks/use-notifications'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
 
 import { defaultTopNavLinks } from '../config/top-nav.config'
-import { type TopNavLink } from '../types'
+import type { TopNavLink } from '../types'
+import { AnnouncementBanner } from './announcement-banner'
 import { Header } from './header'
 import { SystemBrand } from './system-brand'
 import { TopNav } from './top-nav'
@@ -110,8 +113,39 @@ export function AppHeader({
   // Notifications hook
   const notifications = useNotifications()
 
+  const headerRef = useRef<HTMLDivElement>(null)
+
+  // 改造#30：横幅插在 header 上方，会让整个头部比固定的 3rem 更高。而侧栏位置
+  // 与内容区高度都是按 --app-header-height 算的，所以这里把实测高度写回该变量，
+  // 让它们跟着横幅下移，而不是把内容挤出视口。
+  useEffect(() => {
+    const node = headerRef.current
+    if (!node) return
+
+    const publishHeight = () => {
+      document.documentElement.style.setProperty(
+        '--app-header-height',
+        `${node.offsetHeight}px`
+      )
+    }
+
+    publishHeight()
+    const observer = new ResizeObserver(publishHeight)
+    observer.observe(node)
+
+    return () => {
+      observer.disconnect()
+      document.documentElement.style.removeProperty('--app-header-height')
+    }
+  }, [])
+
   return (
-    <>
+    <div ref={headerRef} className='sticky top-0 z-40 w-full shrink-0'>
+      <AnnouncementBanner
+        announcements={notifications.announcements}
+        onOpenAnnouncements={() => notifications.openPopover('announcements')}
+      />
+
       <Header>
         <SystemBrand variant='inline' />
 
@@ -145,6 +179,6 @@ export function AppHeader({
           </div>
         )}
       </Header>
-    </>
+    </div>
   )
 }
