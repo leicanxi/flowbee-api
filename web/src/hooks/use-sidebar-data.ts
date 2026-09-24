@@ -26,6 +26,7 @@ import {
   FlaskConical,
   Gift,
   Heart,
+  Image as ImageIcon,
   Key,
   LayoutDashboard,
   ListTodo,
@@ -95,10 +96,13 @@ export function useSidebarData(): SidebarData {
             icon: FileText,
           },
           {
+            title: t('Drawing Logs'),
+            url: '/usage-logs/drawing',
+            icon: ImageIcon,
+          },
+          {
             title: t('Task Logs'),
             url: '/usage-logs/task',
-            activeUrls: ['/usage-logs/drawing'],
-            configUrls: ['/usage-logs/drawing', '/usage-logs/task'],
             icon: ListTodo,
           },
           {

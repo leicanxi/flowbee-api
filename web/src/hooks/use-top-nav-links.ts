@@ -102,7 +102,7 @@ export function useTopNavLinks(): TopNavLink[] {
 
   // Support
   if (modules?.support !== false) {
-    links.push({ title: t('Support'), href: '/sponsors' })
+    links.push({ title: t('Sponsor us'), href: '/sponsors' })
   }
 
   return links
