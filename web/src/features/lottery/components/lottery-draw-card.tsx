@@ -230,6 +230,25 @@ export function LotteryDrawCard({
   const isBigWin =
     result != null && result.won && result.quota_awarded > lowestQuota
 
+  // 状态文案是一条优先级链：未开始 → 已结束 → 还有次数 → 可分享换次数 → 没次数。
+  // 用 if 链而不是嵌套三元 —— 五个分支叠在一起时读不出优先级，改错一支就整体串位。
+  let statusText: string
+  if (data.status === 'not_started') {
+    statusText = t('Not started yet')
+  } else if (data.status === 'ended') {
+    statusText = t('Activity ended')
+  } else if (drawsLeft > 0) {
+    statusText = t('You have {{count}} draw(s) left', { count: drawsLeft })
+  } else if (canShare) {
+    statusText = t('Share to unlock 1 more draw')
+  } else {
+    statusText = t('No draws left')
+  }
+
+  // 抽奖态要带 spinner，按钮内容没法整块抽成一个变量；只把非抽奖态的两支抽出来，
+  // 这样按钮里只剩一层三元，不再是三元套三元。
+  const idleDrawLabel = drawsLeft > 0 ? t('Draw now') : t('No draws left')
+
   return (
     <>
       <Card data-card-hover='false' className='gap-0 overflow-hidden py-0'>
@@ -240,17 +259,7 @@ export function LotteryDrawCard({
             </div>
             <div className='min-w-0 flex-1'>
               <h3 className='text-base font-medium'>{data.title}</h3>
-              <p className='text-muted-foreground mt-1 text-xs'>
-                {data.status === 'not_started'
-                  ? t('Not started yet')
-                  : data.status === 'ended'
-                    ? t('Activity ended')
-                    : drawsLeft > 0
-                      ? t('You have {{count}} draw(s) left', { count: drawsLeft })
-                      : canShare
-                        ? t('Share to unlock 1 more draw')
-                        : t('No draws left')}
-              </p>
+              <p className='text-muted-foreground mt-1 text-xs'>{statusText}</p>
             </div>
           </div>
 
@@ -310,10 +319,8 @@ export function LotteryDrawCard({
                     <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                     {t('Drawing in progress')}
                   </>
-                ) : drawsLeft > 0 ? (
-                  t('Draw now')
                 ) : (
-                  t('No draws left')
+                  idleDrawLabel
                 )}
               </Button>
             ) : (
