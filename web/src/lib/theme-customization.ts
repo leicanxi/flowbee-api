@@ -117,9 +117,13 @@ export type ThemeCustomization = {
 
 export const DEFAULT_THEME_CUSTOMIZATION: ThemeCustomization = {
   // 改造#4：全站默认 Anthropic 配色 + sans 字体（用户可在设置中自行覆盖）
+  // 改造#32：圆角默认从「Auto（跟随预设）」改为明确档位 xl = 1rem。
+  // 注意：默认值一旦不等于 'default'，provider 里写 data-theme-radius 的
+  // 判断就必须同步改成按字面量 'default' 比较 —— 否则 xl 会被当成「未覆盖」
+  // 而移除属性，[data-theme-radius='xl'] 永不生效，回落到预设的 0.625rem。
   preset: 'anthropic',
   font: 'sans',
-  radius: 'default',
+  radius: 'xl',
   scale: 'default',
   contentLayout: 'full',
 }

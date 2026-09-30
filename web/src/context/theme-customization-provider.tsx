@@ -152,18 +152,21 @@ export function ThemeCustomizationProvider(props: {
     applyAttribute('data-theme-font', resolveThemeFont(font, preset))
   }, [font, preset])
 
+  // 改造#32：默认半径改为 xl 之后，这里必须按字面量 'default' 判断。
+  // 语义是「default = 不表态、跟随预设」—— CSS 里没有 [data-theme-radius='default']
+  // 规则，只有移除属性才会落回预设的 --radius。若继续拿
+  // DEFAULT_THEME_CUSTOMIZATION.radius 做比较，用户在默认档位时属性会被移除，
+  // xl 的 1rem 就永远不生效（与上面 preset 的坑同源）。
   useEffect(() => {
-    applyAttribute(
-      'data-theme-radius',
-      radius === DEFAULT_THEME_CUSTOMIZATION.radius ? null : radius
-    )
+    applyAttribute('data-theme-radius', radius === 'default' ? null : radius)
   }, [radius])
 
+  // scale 的 default 语义与 radius 相同（不表态、跟随预设），一并按字面量判断：
+  // 与「默认值」无关，所以不能拿 DEFAULT_THEME_CUSTOMIZATION.scale 去比
+  // —— 将来改 scale 默认值时就会踩和 radius 一样的坑。
+  // 注意 setScale 里的比较是另一回事（「等于默认值就不必存 cookie」），保持用常量。
   useEffect(() => {
-    applyAttribute(
-      'data-theme-scale',
-      scale === DEFAULT_THEME_CUSTOMIZATION.scale ? null : scale
-    )
+    applyAttribute('data-theme-scale', scale === 'default' ? null : scale)
   }, [scale])
 
   useEffect(() => {
