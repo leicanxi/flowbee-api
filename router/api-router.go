@@ -132,6 +132,10 @@ func SetApiRouter(router *gin.Engine) {
 				// 分享动作必须由服务端记账：它解锁的是真实的抽奖机会，
 				// 只做在前端等于没做（直接调 draw 接口就能跳过）。
 				selfRoute.POST("/lottery/share", controller.MarkLotteryShare)
+
+				// 反馈中心单点登录（改造#31）：只返回带签名的跳转地址，
+				// 由前端中转页决定是跳过去还是提示先绑邮箱。
+				selfRoute.GET("/feedback_sso", middleware.DisableCache(), controller.GetFeedbackSSOURL)
 				// 导出接口挂在 self 组并单独挂 AdminAuth，而不是写进 adminRoute：
 				// adminRoute 下混的是用户管理类路由，导出属于活动运营工具，
 				// 和它们放一起容易在后续维护中被误改权限。权限由 AdminAuth 中间件保证。
