@@ -57,9 +57,11 @@ import type {
 } from '@/features/keys/types'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { getUserModels } from '@/lib/api'
+import { formatQuotaWithCurrency } from '@/lib/currency'
 // import { MOTION_TRANSITION } from '@/lib/motion'
 import { ROLE } from '@/lib/roles'
 import { cn } from '@/lib/utils'
+import { resolveWelfareTier, welfareTierLabel } from '@/lib/welfare-tier'
 import { useAuthStore } from '@/stores/auth-store'
 
 import {
@@ -318,7 +320,7 @@ function StartStepItem(props: {
 type RequestPreviewShortcut =
   | {
       kind: 'internal'
-      to: '/invite' | '/pricing'
+      to: '/invite' | '/pricing' | '/feedback'
       label: string
       icon: LucideIcon
     }
@@ -351,8 +353,10 @@ const REQUEST_SHORTCUTS: RequestPreviewShortcut[] = [
     icon: BookOpen,
   },
   {
-    kind: 'external',
-    href: 'https://post.flowbee.top',
+    // 改造#31：与侧边栏同一入口，改走本站中转页换取带身份的跳转地址，
+    // 否则首页点进去仍是「到一个不认识你的站，再登录一次」。
+    kind: 'internal',
+    to: '/feedback',
     label: 'Wishlist & Feedback',
     icon: Heart,
   },
@@ -569,6 +573,25 @@ function SetupStepCards(props: { example: RequestExample }) {
   const { t } = useTranslation()
   const { example } = props
   const { copyingTarget, copy } = useExampleCopy(example)
+  const user = useAuthStore((state) => state.auth.user)
+
+  // 改造#33：把「免费模型调用速率 · N 档」摆到充值这一行。档位由余额决定，
+  // 而以前只有福利页在讲这件事，进概览的人根本不知道有这个机制；给出
+  // 「我在哪一档、还差多少」，充值就从一句劝说变成了一个有终点的动作。
+  const tier = resolveWelfareTier(
+    Number(user?.quota ?? 0),
+    user?.welfare_thresholds ?? []
+  )
+  const tierLabel = tier.locked ? t('Locked') : welfareTierLabel(t, tier.level)
+  const tierGap =
+    tier.nextLevelIndex === undefined
+      ? t('Highest open tier reached')
+      : t('{{amount}} away from {{tier}}', {
+          amount: formatQuotaWithCurrency(
+            Math.max(tier.progressTargetQuota - Number(user?.quota ?? 0), 0)
+          ),
+          tier: welfareTierLabel(t, tier.nextLevelIndex),
+        })
   // Plaintext is only known right after we create the key for the user; otherwise
   // the panel shows the masked value and copying resolves the real key on demand.
   const keyValue = example.plainKey
@@ -622,7 +645,22 @@ function SetupStepCards(props: { example: RequestExample }) {
 
       <li>
         <Link to='/wallet' className={CARD_LINK_CLASS_NAME}>
-          <StepCardBody {...CREDITS_STEP_CARD} />
+          <StepCardBody
+            {...CREDITS_STEP_CARD}
+            action={
+              /* 改造#33：只是提示，不用徽标框 —— 加一圈描边反而会把「添加额度」
+                 本身的注意力抢走，浅色小字已经够。
+                 `block leading-4` 是为了压掉外层那个 ml-auto wrapper 的行高：它的
+                 字号继承自 body（16px/24px），24px 的行框 strut 会把里面 11px 的
+                 文字往下推 2px，跟标题不在一条视线上。改成块级 + 显式 16px 行高后，
+                 盒高塌缩到文字自身高度，与左侧「2. 添加额度」的基线对齐。 */
+              <span className='text-muted-foreground block text-[11px] leading-4 tabular-nums'>
+                {tierLabel}
+                {' · '}
+                {tierGap}
+              </span>
+            }
+          />
           <ArrowRight
             className='text-muted-foreground size-4 shrink-0'
             aria-hidden='true'

@@ -69,17 +69,20 @@ interface AdminSponsorshipListResponse {
   data?: AdminSponsorshipPage
 }
 
-/** 后台分页拉取支持记录，用于审核寄语；username 为空时不按用户过滤。 */
+/** 后台分页拉取支持记录，用于审核寄语。
+ *  status 为空时返回全部；前端默认只查 success —— 只有真正付过款的记录才算支持。 */
 export async function listSponsorshipOrders(options: {
   page?: number
   pageSize?: number
   username?: string
+  status?: string
 }): Promise<AdminSponsorshipListResponse> {
   const res = await api.get('/api/sponsorship/admin/orders', {
     params: {
       page: options.page ?? 1,
       page_size: options.pageSize ?? 20,
       username: options.username ?? '',
+      status: options.status ?? '',
     },
   })
   return res.data

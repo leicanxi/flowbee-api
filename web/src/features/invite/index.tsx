@@ -20,17 +20,16 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { SectionPageLayout } from '@/components/layout'
-import { useStatus } from '@/hooks/use-status'
-import { getSelf } from '@/lib/api'
-
+import { TierStatusCard } from '@/features/invite/components/tier-status-card'
+import { LotteryDrawCard } from '@/features/lottery/components/lottery-draw-card'
 import { CheckinCalendarCard } from '@/features/profile/components/checkin-calendar-card'
 import { AffiliateRewardsCard } from '@/features/wallet/components/affiliate-rewards-card'
 import { TransferDialog } from '@/features/wallet/components/dialogs/transfer-dialog'
 import { useAffiliate, useTopupInfo } from '@/features/wallet/hooks'
 import type { UserWalletData } from '@/features/wallet/types'
-
-import { TierStatusCard } from '@/features/invite/components/tier-status-card'
-import { LotteryDrawCard } from '@/features/lottery/components/lottery-draw-card'
+import { useStatus } from '@/hooks/use-status'
+import { getSelf } from '@/lib/api'
+import { useAuthStore, type AuthUser } from '@/stores/auth-store'
 
 /**
  * Welfare page (formerly "Invite & Check-in").
@@ -80,6 +79,12 @@ export function Invite() {
       const response = await getSelf()
       if (response.success && response.data) {
         setUser(response.data as UserWalletData)
+        // 改造#33：同钱包页。签到、转入奖励都会改变余额，也就改变了免费
+        // 模型调用速率所在的档位，所以这里同样要把最新数据回写登录态，
+        // 否则概览页那行档位提示会停在进入福利页之前的档位。
+        useAuthStore
+          .getState()
+          .auth.setUser(response.data as unknown as AuthUser)
       }
     } catch (error) {
       // eslint-disable-next-line no-console

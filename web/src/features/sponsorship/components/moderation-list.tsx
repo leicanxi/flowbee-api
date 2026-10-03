@@ -35,6 +35,10 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from '@/components/ui/native-select'
 import { formatCurrency } from '@/features/wallet/lib'
 
 import { listSponsorshipOrders, updateSponsorshipMessageStatus } from '../api'
@@ -42,6 +46,23 @@ import type { AdminSponsorshipOrder, SponsorshipAdminStats } from '../types'
 
 const QUERY_KEY = 'sponsorship-admin-orders'
 const PAGE_SIZE = 20
+
+/**
+ * 订单状态 → 展示文案与配色。
+ *
+ * 这一列是必须的：点开支持页、在支付页面上放弃、订单从此停在 pending ——
+ * 这条流程会留下一条和真实支持长得一模一样的记录。不标出状态的话，
+ * 后台会把"点过但没付"的人也算成赞助者，人数和金额都会被高估。
+ */
+const STATUS_META: Record<
+  string,
+  { labelKey: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }
+> = {
+  success: { labelKey: 'Paid', variant: 'default' },
+  pending: { labelKey: 'Not paid', variant: 'outline' },
+  expired: { labelKey: 'Expired', variant: 'secondary' },
+  failed: { labelKey: 'Failed', variant: 'destructive' },
+}
 
 function formatDate(timestamp: number): string {
   if (!timestamp) return '-'
@@ -64,14 +85,21 @@ function StatsLine(props: { stats: SponsorshipAdminStats | undefined }) {
     { label: t('Total amount'), value: `¥${formatCurrency(stats.total_money)}` },
   ]
   return (
-    <dl className='flex flex-wrap gap-x-8 gap-y-2'>
-      {items.map((item) => (
-        <div key={item.label}>
-          <dt className='text-muted-foreground text-xs'>{item.label}</dt>
-          <dd className='text-lg font-semibold tabular-nums'>{item.value}</dd>
-        </div>
-      ))}
-    </dl>
+    <div className='space-y-1.5'>
+      <dl className='flex flex-wrap gap-x-8 gap-y-2'>
+        {items.map((item) => (
+          <div key={item.label}>
+            <dt className='text-muted-foreground text-xs'>{item.label}</dt>
+            <dd className='text-lg font-semibold tabular-nums'>{item.value}</dd>
+          </div>
+        ))}
+      </dl>
+      {/* 口径必须写出来：点开支付页又放弃的订单也会留下记录，不说明的话
+          很容易把"点过没付"的人也算成赞助者，人数和金额都会被高估。 */}
+      <p className='text-muted-foreground text-xs'>
+        {t('Only paid records are counted here.')}
+      </p>
+    </div>
   )
 }
 
@@ -90,10 +118,14 @@ export function SponsorshipModeration() {
   const [page, setPage] = useState(1)
   const [usernameInput, setUsernameInput] = useState('')
   const [username, setUsername] = useState('')
+  // 默认只列已支付的。未付款的订单也要能查到（排查支付回调问题时会用到），
+  // 所以做成可切换的筛选，而不是直接从列表里藏掉。
+  const [status, setStatus] = useState('success')
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: [QUERY_KEY, page, username],
-    queryFn: () => listSponsorshipOrders({ page, pageSize: PAGE_SIZE, username }),
+    queryKey: [QUERY_KEY, page, username, status],
+    queryFn: () =>
+      listSponsorshipOrders({ page, pageSize: PAGE_SIZE, username, status }),
     placeholderData: keepPreviousData,
   })
 
@@ -138,6 +170,20 @@ export function SponsorshipModeration() {
             )}
           </div>
         )
+      },
+    },
+    {
+      accessorKey: 'status',
+      header: t('Status'),
+      enableSorting: false,
+      cell: ({ row }) => {
+        const meta = STATUS_META[row.original.status]
+        if (!meta) {
+          return (
+            <span className='text-muted-foreground'>{row.original.status}</span>
+          )
+        }
+        return <Badge variant={meta.variant}>{t(meta.labelKey)}</Badge>
       },
     },
     {
@@ -224,6 +270,28 @@ export function SponsorshipModeration() {
           className='h-8 max-w-56'
           aria-label={t('Search by username')}
         />
+        <NativeSelect
+          value={status}
+          onChange={(event) => {
+            setPage(1)
+            setStatus(event.target.value)
+          }}
+          className='w-36'
+          aria-label={t('Status')}
+        >
+          <NativeSelectOption value='success'>
+            {t('Paid only')}
+          </NativeSelectOption>
+          <NativeSelectOption value=''>
+            {t('All records')}
+          </NativeSelectOption>
+          <NativeSelectOption value='pending'>
+            {t('Not paid')}
+          </NativeSelectOption>
+          <NativeSelectOption value='expired'>
+            {t('Expired')}
+          </NativeSelectOption>
+        </NativeSelect>
         <Button type='submit' variant='outline' size='sm'>
           <Search className='h-4 w-4' />
           {t('Search')}

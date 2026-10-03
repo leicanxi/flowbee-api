@@ -16,13 +16,19 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { Link } from '@tanstack/react-router'
+import { Gift } from 'lucide-react'
 import { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { ConfigDrawer } from '@/components/config-drawer'
-import { LanguageSwitcher } from '@/components/language-switcher'
+// 改造#34：顶栏的语言切换下线，改成福利页入口（用户要求）。实现仍在
+// `@/components/language-switcher`，要恢复就取消这行与下方 JSX 里的注释。
+// import { LanguageSwitcher } from '@/components/language-switcher'
 import { NotificationPopover } from '@/components/notification-popover'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
+import { Button } from '@/components/ui/button'
 import { useNotifications } from '@/hooks/use-notifications'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
 
@@ -106,6 +112,8 @@ export function AppHeader({
   showConfigDrawer = true,
   showProfileDropdown = true,
 }: AppHeaderProps) {
+  const { t } = useTranslation()
+
   // Prioritize dynamically generated links from backend
   const dynamicLinks = useTopNavLinks()
   const links = dynamicLinks.length > 0 ? dynamicLinks : navLinks
@@ -173,7 +181,17 @@ export function AppHeader({
                 loading={notifications.loading}
               />
             )}
-            <LanguageSwitcher />
+            {/* 改造#34：语言切换下线，改成福利页入口（用户要求）。 */}
+            {/* <LanguageSwitcher /> */}
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-9 w-9'
+              render={<Link to='/invite' />}
+            >
+              <Gift className='size-[1.2rem]' />
+              <span className='sr-only'>{t('Welfare')}</span>
+            </Button>
             {showConfigDrawer && <ConfigDrawer />}
             {showProfileDropdown && <ProfileDropdown />}
           </div>

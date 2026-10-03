@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { Link } from '@tanstack/react-router'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -23,6 +24,7 @@ import { SectionPageLayout } from '@/components/layout'
 import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { getSelf } from '@/lib/api'
+import { useAuthStore, type AuthUser } from '@/stores/auth-store'
 
 import { BillingHistoryDialog } from './components/dialogs/billing-history-dialog'
 import { CreemConfirmDialog } from './components/dialogs/creem-confirm-dialog'
@@ -30,6 +32,7 @@ import { PaymentConfirmDialog } from './components/dialogs/payment-confirm-dialo
 import { RechargeFormCard } from './components/recharge-form-card'
 import { SubscriptionPlansCard } from './components/subscription-plans-card'
 import { WalletStatsCard } from './components/wallet-stats-card'
+import { WelfareLinks } from './components/welfare-links'
 import { DEFAULT_DISCOUNT_RATE, PAYMENT_TYPES } from './constants'
 import {
   useTopupInfo,
@@ -106,6 +109,12 @@ export function Wallet(props: WalletProps) {
       const response = await getSelf()
       if (response.success && response.data) {
         setUser(response.data as UserWalletData)
+        // 改造#33：本页拿到的是最新的 self 数据，顺手回写登录态。概览页第 2 步
+        // 那行档位提示读的就是登录态；不回写的话，用户刚充完值回到概览，它还
+        // 写着「距 2 档还差 ¥0.9」，看着像充值没生效。
+        useAuthStore
+          .getState()
+          .auth.setUser(response.data as unknown as AuthUser)
       }
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -267,8 +276,20 @@ export function Wallet(props: WalletProps) {
     <>
       <SectionPageLayout>
         <SectionPageLayout.Title>{t('Wallet')}</SectionPageLayout.Title>
+        {/* 改造#33：右端只留「赞助一下」这一条跳转 —— 充值入口本身就是这一页，
+            再放一个「增加余额」等于把用户指回原地。档位与福利两个入口在标题
+            下方那一行胶囊里（WelfareLinks），不占标题行。 */}
+        <SectionPageLayout.Actions>
+          <Link
+            to='/sponsors'
+            className='text-muted-foreground hover:text-foreground text-xs font-medium transition-colors'
+          >
+            {t('Sponsor us')}
+          </Link>
+        </SectionPageLayout.Actions>
         <SectionPageLayout.Content>
           <div className='mx-auto flex w-full max-w-7xl flex-col gap-4 sm:gap-5'>
+            <WelfareLinks user={user} />
             <WalletStatsCard user={user} loading={userLoading} />
 
             <div

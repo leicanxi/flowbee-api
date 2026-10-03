@@ -35,6 +35,12 @@ export interface AuthUser {
   status?: number
   group?: string
   quota?: number
+  /**
+   * 改造#33：福利分组按余额分档的 min_quota 阈值（升序），与
+   * /api/user/self 下发的 welfare_thresholds 同源。
+   * 概览页的等级徽标读的就是登录态里的这一项。
+   */
+  welfare_thresholds?: number[]
   used_quota?: number
   request_count?: number
   aff_code?: string

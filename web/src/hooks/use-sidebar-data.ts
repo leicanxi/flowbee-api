@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import {
   Activity,
+  BadgeDollarSign,
   BookOpen,
   Box,
   Coffee,
@@ -106,6 +107,15 @@ export function useSidebarData(): SidebarData {
             icon: ListTodo,
           },
           {
+            // 改造#33：模型广场（/pricing 公开页）入口。此前只能从公开页顶栏或首页
+            // 快捷入口进，一旦进了控制台就没有回去的路。刻意不加 URL_TO_CONFIG_MAP
+            // 映射，与下面「使用教程」同一处理方式 —— 恒可见，不受侧栏模块开关控制
+            // （pricing 页面本身有自己的启用开关，由 HeaderNavModules 管）。
+            title: t('Model Square'),
+            url: '/pricing',
+            icon: BadgeDollarSign,
+          },
+          {
             // 改造#5：外部链接入口（复用已有 key "Usage guide" = 使用教程），移至常规组使用日志下方
             title: t('Usage guide'),
             url: 'https://docs.flowbee.top',
@@ -134,9 +144,11 @@ export function useSidebarData(): SidebarData {
             icon: User,
           },
           {
-            // 改造#5：外部链接入口（改造#7：字少的「个人资料」在上，外链「心愿与反馈」移至下方）
+            // 改造#5：外链入口（改造#7：字少的「个人资料」在上，「心愿与反馈」移至下方）
+            // 改造#31：不再直接外链 post.flowbee.top，改走本站中转页 —— 那边读不到本站会话，
+            // 得先由本站签一张身份票带过去，用户落地才是已登录的。
             title: t('Wishlist & Feedback'),
-            url: 'https://post.flowbee.top',
+            url: '/feedback',
             icon: Heart,
           },
           {

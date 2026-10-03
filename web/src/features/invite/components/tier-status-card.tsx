@@ -24,6 +24,7 @@ import { IconBadge } from '@/components/ui/icon-badge'
 import { Progress } from '@/components/ui/progress'
 import type { UserWalletData } from '@/features/wallet/types'
 import { formatQuotaWithCurrency } from '@/lib/currency'
+import { resolveWelfareTier, welfareTierLabel } from '@/lib/welfare-tier'
 
 /**
  * 改造#8：福利页「我的等级」卡组。视觉曾按设计稿（member-cards.html，
@@ -46,15 +47,6 @@ import { formatQuotaWithCurrency } from '@/lib/currency'
  * 用户余额对比阈值得到。
  */
 
-// 等级名（Lv 编号，不参与翻译：语言无关，改档位数只需改这一行）。
-// 改造#24：由双字文艺词（拾光/逐行/知遇/揽境/极观）改为 Lv 编号 —— 文艺名
-// 要先理解词义才知道谁高谁低，而「Lv + 数字」本身就是序关系，用户扫一眼
-// 就知道自己在第几档、下一档是几。
-const LEVEL_NAMES = ['Lv1', 'Lv2', 'Lv3', 'Lv4', 'Lv5']
-// 设计稿里开放的三档（Lv1/Lv2/Lv3）；Lv4/Lv5 是「未开放」展示位，
-// 余额再高也不会自动命中。
-const OPEN_TIER_COUNT = 3
-
 /**
  * TierStatusCard 渲染福利页的档位摘要条：当前档位、距下一档的缺口与解锁状态。
  * user 为空时兜底展示第一档。
@@ -62,45 +54,22 @@ const OPEN_TIER_COUNT = 3
 export function TierStatusCard({ user }: { user: UserWalletData | null }) {
   const { t } = useTranslation()
 
-  // 后端返回的 welfare_thresholds 已升序；未配置时兜底为 [0]，保证入门档恒存在。
-  const rawThresholds = user?.welfare_thresholds ?? []
-  const thresholds = rawThresholds.length > 0 ? rawThresholds : [0]
   const quota = user?.quota ?? 0
-
-  // 改造#23：当前等级从 -1 起步，与后端 setting.GetBalanceTierLevels 对齐。
-  // 余额低于最低档时后端返回 level = -1，且 middleware/model-rate-limit.go
-  // 对「低于最低档」直接 429（连福利分组都调不通）。原实现从 0 起步、只在
-  // 命中时赋值，于是余额不足的用户会被标成第一档的当前等级，并被告知
-  // 「距下一档还差 X」—— 而那个 X 也不是真正该补的缺口。
-  let currentLevel = -1
-  for (let i = 0; i < thresholds.length; i++) {
-    if (quota >= thresholds[i]) currentLevel = i
-  }
-  // 截断到开放档位（Lv4/Lv5 永不自动命中）；-1 表示未解锁，必须保留。
-  currentLevel = Math.min(currentLevel, OPEN_TIER_COUNT - 1)
-
-  // 未解锁时「下一档」就是第一档，已解锁时是更高一档；undefined 表示没有下一档。
-  const nextLevelIndex =
-    currentLevel + 1 < Math.min(thresholds.length, OPEN_TIER_COUNT)
-      ? currentLevel + 1
-      : undefined
-
-  // 进度目标：未解锁看距第一档的缺口，已解锁看距下一档的缺口，最高档满格。
-  const locked = currentLevel < 0
-  const isTopTier = currentLevel >= 0 && nextLevelIndex === undefined
-  const progressLevelIndex = locked ? 0 : nextLevelIndex
-  const progressTargetQuota =
-    progressLevelIndex === undefined
-      ? thresholds[currentLevel]
-      : thresholds[progressLevelIndex]
+  // 改造#33：档位 / 缺口 / 进度的算法抽进 lib/welfare-tier.ts，与钱包页的
+  // 等级卡片、概览页第 2 步的徽标共用一份。三处各写一遍时，最容易漏的
+  // 就是「余额低于最低档」这条边界（后端此时返回 level = -1 并直接 429）。
+  const tier = resolveWelfareTier(quota, user?.welfare_thresholds ?? [])
+  const {
+    locked,
+    isTopTier,
+    nextLevelIndex,
+    progressTargetQuota,
+    progressPercent,
+  } = tier
   const progressTierName =
-    progressLevelIndex === undefined
+    nextLevelIndex === undefined
       ? undefined
-      : LEVEL_NAMES[progressLevelIndex]
-  const progressPercent =
-    progressTargetQuota > 0
-      ? Math.min(Math.max((quota / progressTargetQuota) * 100, 0), 100)
-      : 100
+      : welfareTierLabel(t, nextLevelIndex)
 
   // 解锁状态文案：三档速率不同，但差异只能落在「档位 + 缺口」上，
   // 不写具体请求速率（见下方摘要条注释）。
@@ -108,7 +77,7 @@ export function TierStatusCard({ user }: { user: UserWalletData | null }) {
   if (locked) {
     summaryStatus = t(
       'Balance must reach {{amount}} to use free models in the welfare group.',
-      { amount: formatQuotaWithCurrency(thresholds[0]) }
+      { amount: formatQuotaWithCurrency(tier.progressTargetQuota) }
     )
   } else if (isTopTier) {
     // 改造#24：删掉了原句尾的「继续充值不会提升速率」。那半句是给「正准备
@@ -153,7 +122,7 @@ export function TierStatusCard({ user }: { user: UserWalletData | null }) {
           variant={locked ? 'outline' : 'secondary'}
           className='h-5 px-2 text-[10px]'
         >
-          {locked ? t('Locked') : LEVEL_NAMES[currentLevel]}
+          {locked ? t('Locked') : welfareTierLabel(t, tier.level)}
         </Badge>
       </div>
 
@@ -186,6 +155,17 @@ export function TierStatusCard({ user }: { user: UserWalletData | null }) {
 
       <p className='text-muted-foreground mt-3 border-t border-dashed pt-2.5 text-xs leading-relaxed'>
         {summaryStatus}
+        {/* 改造#33：补上「每分钟次数用完之后去哪」。用户此前最担心的一点是
+            「用完是不是就掉进付费区间」——这件事得说出来，而且要在讲档位的地方
+            说。未解锁时不成立（还没用上免费模型），所以只在已解锁时出现。 */}
+        {!locked && (
+          <>
+            {' '}
+            {t(
+              'Once the per-minute quota runs out, requests fall back to the subsidy channel.'
+            )}
+          </>
+        )}
       </p>
     </div>
   )

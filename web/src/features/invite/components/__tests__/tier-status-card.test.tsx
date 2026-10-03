@@ -25,6 +25,10 @@ For commercial licensing, please contact support@quantumnous.com
  *
  * 改造#27：摘要条下方的 Lv1–Lv5 轮播大卡已整块删除，本文件同时守住
  * 「删掉的内容不会再回来」——否则只删一次、下次重构又加回来是很容易发生的。
+ *
+ * 改造#33：档位名从 'Lv1' 改成「1 档」。这一版短暂用过「免费模型调用等级 /
+ * Lv1」，但 Lv 会被读成累积型会员等级，而真实规则是余额随时决定档位；术语
+ * 已经回到「速率 + 档」。同时补了「每分钟次数用完后会优先使用补贴通道」这句。
  */
 import { render } from '@testing-library/react'
 import { beforeEach, describe, expect, test } from 'vitest'
@@ -86,17 +90,19 @@ describe('福利页档位摘要条', () => {
 
   // 改造#27：升级提示里的金额是「距下一档的差额」，不是目标余额 —— 原来接的
   // 词条写的是「余额达到 {{amount}} 可升级至 {{tier}}」，等于把这笔差额说成
-  // 了目标余额。这里锁死「距 LvX 还差 ¥Y」的说法，避免退回旧口径。
+  // 了目标余额。这里锁死「距 2 档还差 ¥Y」的说法，避免退回旧口径。
   test('中间档展示当前档位、缺口差额与下一档名', () => {
     const { container } = renderCard(1.2)
     const text = textOf(container)
 
     expect(text).toContain('免费模型调用速率')
-    expect(text).toContain('Lv1')
+    expect(text).toContain('1档')
     expect(text).not.toContain('锁定')
-    expect(text).toMatch(/距Lv2还差¥0\.8(?:000)?/)
+    expect(text).toMatch(/距2档还差¥0\.8(?:000)?/)
     expect(text).not.toContain('可升级至')
     expect(text).toContain('福利分组的免费模型已解锁')
+    // 改造#33：用户最担心「次数用完是不是就掉进付费区间」，这半句必须常驻。
+    expect(text).toContain('每分钟次数用完后会优先使用补贴通道')
   })
 
   test('余额低于最低档时档位显示「锁定」，不再被标成第一档', () => {
@@ -105,19 +111,23 @@ describe('福利页档位摘要条', () => {
 
     expect(text).toContain('锁定')
     expect(text).toMatch(/余额需达到¥1(?:\.00)?才能使用福利分组的免费模型/)
-    expect(text).toMatch(/距Lv1还差¥0\.8(?:000)?/)
+    expect(text).toMatch(/距1档还差¥0\.8(?:000)?/)
     // 改 #23 之前这里会标成第一档的当前等级（-1 起步的回归防线）。
     expect(text).not.toContain('当前等级')
+    // 未解锁时「次数用完后去哪」不成立 —— 还没用上免费模型，不该出现。
+    expect(text).not.toContain('补贴通道')
   })
 
   test('最高档只陈述事实，不再出现「继续充值不会提升速率」', () => {
     const { container } = renderCard(5)
     const text = textOf(container)
 
-    expect(text).toContain('Lv3')
+    expect(text).toContain('3档')
     expect(text).toContain('已达最高档位：免费模型的调用速率已是上限。')
     expect(text).toContain('已达最高公开档位')
     expect(text).not.toContain('继续充值')
+    // 顶档同样会撞上限速，所以这半句要留着。
+    expect(text).toContain('每分钟次数用完后会优先使用补贴通道')
   })
 
   // 改造#27：整块删除的 Lv1–Lv5 轮播大卡（含四个权益图标）不得再出现。
@@ -143,13 +153,14 @@ describe('福利页档位摘要条', () => {
     }
   })
 
+  // 改造#33：「每分钟次数用完后会优先使用补贴通道」只是在说去向，不含数字，
+  // 所以这里禁的仍然是「具体速率」—— 第 X 次/分钟那种。
   test('不展示任何具体请求速率（防刷闸门不当权益展示）', () => {
     for (const quota of [0.2, 1.2, 5]) {
       const { container } = renderCard(quota)
       const text = textOf(container)
 
-      expect(text).not.toMatch(/请求\/分钟|次\/分钟|每分钟/)
-      expect(text).not.toMatch(/\d+次/)
+      expect(text).not.toMatch(/请求\/分钟|次\/分钟|\d+次/)
     }
   })
 
