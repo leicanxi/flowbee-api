@@ -9,6 +9,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// filterPricingByUsableGroups keeps only the models the user can actually call
+// and trims each model's group list down to groups the user is allowed to
+// select, so clients never render a group the user cannot use.
 func filterPricingByUsableGroups(pricing []model.Pricing, usableGroup map[string]string) []model.Pricing {
 	if len(pricing) == 0 {
 		return pricing
@@ -19,16 +22,34 @@ func filterPricingByUsableGroups(pricing []model.Pricing, usableGroup map[string
 
 	filtered := make([]model.Pricing, 0, len(pricing))
 	for _, item := range pricing {
+		// "all" 表示该模型对所有分组开放，展开成当前用户实际可选的分组。
 		if common.StringsContains(item.EnableGroup, "all") {
+			visibleGroups := make([]string, 0, len(usableGroup))
+			for group := range usableGroup {
+				if group == "" || group == "auto" {
+					continue
+				}
+				visibleGroups = append(visibleGroups, group)
+			}
+			if len(visibleGroups) == 0 {
+				continue
+			}
+			item.EnableGroup = visibleGroups
 			filtered = append(filtered, item)
 			continue
 		}
+
+		visibleGroups := make([]string, 0, len(item.EnableGroup))
 		for _, group := range item.EnableGroup {
 			if _, ok := usableGroup[group]; ok {
-				filtered = append(filtered, item)
-				break
+				visibleGroups = append(visibleGroups, group)
 			}
 		}
+		if len(visibleGroups) == 0 {
+			continue
+		}
+		item.EnableGroup = visibleGroups
+		filtered = append(filtered, item)
 	}
 	return filtered
 }
