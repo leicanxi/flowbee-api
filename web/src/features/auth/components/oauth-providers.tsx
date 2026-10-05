@@ -27,6 +27,7 @@ import {
   IconWeChat,
 } from '@/assets/brand-icons'
 import { Button } from '@/components/ui/button'
+import { getLobeIcon } from '@/lib/lobe-icon'
 import { cn } from '@/lib/utils'
 
 import { useOAuthLogin } from '../hooks/use-oauth-login'
@@ -143,6 +144,9 @@ export function OAuthProviders({
         key: `custom-${provider.slug}`,
         label: t('Continue with {{name}}', { name: provider.name }),
         onClick: () => handleCustomOAuthLogin(provider),
+        // 改造#38：后端 /api/status 已下发自定义 OAuth 的 icon（misc.go 的 CustomOAuthInfo.Icon），
+        // 这里此前未渲染，导致后台填了图标名前端也不显示。icon 取 @lobehub/icons 的组件名（如 Google）。
+        icon: provider.icon ? getLobeIcon(provider.icon, 16) : undefined,
       })
     }
   }
