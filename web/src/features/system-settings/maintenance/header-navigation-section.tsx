@@ -182,7 +182,9 @@ export function HeaderNavigationSection({
     {
       key: 'support',
       title: t('Sponsor us'),
-      description: t('Public page listing supporters and accepting contributions.'),
+      description: t(
+        'Public page listing supporters and accepting contributions.'
+      ),
     },
   ]
 

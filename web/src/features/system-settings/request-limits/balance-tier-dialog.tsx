@@ -34,7 +34,6 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-
 // The form edits the balance threshold as a money amount; the stored
 // ModelRequestRateLimitBalanceTier JSON keeps quota units. Conversion
 // uses the system currency config (CNY applies usdExchangeRate).
@@ -44,7 +43,10 @@ import { getCurrencyDisplay } from '@/lib/currency'
 function quotaToMoney(quota: number): number {
   const { config, meta } = getCurrencyDisplay()
   if (meta.kind === 'tokens') return quota / config.quotaPerUnit
-  const rate = meta.kind === 'currency' ? (meta as { exchangeRate?: number }).exchangeRate ?? 1 : 1
+  const rate =
+    meta.kind === 'currency'
+      ? ((meta as { exchangeRate?: number }).exchangeRate ?? 1)
+      : 1
   return (quota / config.quotaPerUnit) * rate
 }
 
@@ -52,8 +54,11 @@ function quotaToMoney(quota: number): number {
 function moneyToQuota(money: number): number {
   const { config, meta } = getCurrencyDisplay()
   if (meta.kind === 'tokens') return Math.round(money * config.quotaPerUnit)
-  const rate = meta.kind === 'currency' ? (meta as { exchangeRate?: number }).exchangeRate ?? 1 : 1
-  return Math.round(money / rate * config.quotaPerUnit)
+  const rate =
+    meta.kind === 'currency'
+      ? ((meta as { exchangeRate?: number }).exchangeRate ?? 1)
+      : 1
+  return Math.round((money / rate) * config.quotaPerUnit)
 }
 
 /** Symbol prefix for the display currency (e.g. "$", "¥", or none for tokens). */

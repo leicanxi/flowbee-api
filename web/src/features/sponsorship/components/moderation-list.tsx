@@ -28,17 +28,11 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
-import {
-  DataTablePage,
-  useDataTable,
-} from '@/components/data-table'
+import { DataTablePage, useDataTable } from '@/components/data-table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from '@/components/ui/native-select'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { formatCurrency } from '@/features/wallet/lib'
 
 import { listSponsorshipOrders, updateSponsorshipMessageStatus } from '../api'
@@ -56,7 +50,10 @@ const PAGE_SIZE = 20
  */
 const STATUS_META: Record<
   string,
-  { labelKey: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }
+  {
+    labelKey: string
+    variant: 'default' | 'secondary' | 'outline' | 'destructive'
+  }
 > = {
   success: { labelKey: 'Paid', variant: 'default' },
   pending: { labelKey: 'Not paid', variant: 'outline' },
@@ -82,7 +79,10 @@ function StatsLine(props: { stats: SponsorshipAdminStats | undefined }) {
   const items = [
     { label: t('Support records'), value: String(stats.support_count) },
     { label: t('Supporters'), value: String(stats.supporter_num) },
-    { label: t('Total amount'), value: `¥${formatCurrency(stats.total_money)}` },
+    {
+      label: t('Total amount'),
+      value: `¥${formatCurrency(stats.total_money)}`,
+    },
   ]
   return (
     <div className='space-y-1.5'>
@@ -191,7 +191,9 @@ export function SponsorshipModeration() {
       header: t('Amount'),
       enableSorting: false,
       cell: ({ row }) => (
-        <span className='tabular-nums'>¥{formatCurrency(row.original.money)}</span>
+        <span className='tabular-nums'>
+          ¥{formatCurrency(row.original.money)}
+        </span>
       ),
     },
     {
@@ -235,14 +237,16 @@ export function SponsorshipModeration() {
     },
   ]
 
-  const pagination: PaginationState = { pageIndex: page - 1, pageSize: PAGE_SIZE }
+  const pagination: PaginationState = {
+    pageIndex: page - 1,
+    pageSize: PAGE_SIZE,
+  }
   const { table } = useDataTable({
     data: (data?.data?.items ?? []) as unknown as Record<string, unknown>[],
     columns: columns as unknown as ColumnDef<Record<string, unknown>>[],
     pagination,
     onPaginationChange: (updater) => {
-      const next =
-        typeof updater === 'function' ? updater(pagination) : updater
+      const next = typeof updater === 'function' ? updater(pagination) : updater
       setPage(next.pageIndex + 1)
     },
     manualPagination: true,
@@ -282,9 +286,7 @@ export function SponsorshipModeration() {
           <NativeSelectOption value='success'>
             {t('Paid only')}
           </NativeSelectOption>
-          <NativeSelectOption value=''>
-            {t('All records')}
-          </NativeSelectOption>
+          <NativeSelectOption value=''>{t('All records')}</NativeSelectOption>
           <NativeSelectOption value='pending'>
             {t('Not paid')}
           </NativeSelectOption>

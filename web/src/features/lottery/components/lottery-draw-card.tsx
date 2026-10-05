@@ -141,7 +141,8 @@ export function LotteryDrawCard({
   const isRunning = data?.status === 'running'
   const canDraw = isRunning && drawsLeft > 0 && !drawing
   // 免费次数用完、还没分享、且上限还没到 —— 这时分享是真能换到一次机会的
-  const canShare = isRunning && !shared && drawsUsed >= freeDraws && drawsUsed < maxDraws
+  const canShare =
+    isRunning && !shared && drawsUsed >= freeDraws && drawsUsed < maxDraws
   // 抽过之后才露出分享区：没抽过的人先看到的是「立即抽奖」，不是「去分享」
   const showShareBlock = isRunning && drawsUsed > 0
 
@@ -313,7 +314,11 @@ export function LotteryDrawCard({
           {/* 抽奖按钮 */}
           <div className='mt-4'>
             {isRunning ? (
-              <Button onClick={handleDraw} disabled={!canDraw} className='w-full'>
+              <Button
+                onClick={handleDraw}
+                disabled={!canDraw}
+                className='w-full'
+              >
                 {drawing ? (
                   <>
                     <Loader2 className='mr-2 h-4 w-4 animate-spin' />
@@ -348,7 +353,9 @@ export function LotteryDrawCard({
             {result != null &&
               (result.won ? (
                 <div className='text-center'>
-                  <div className='text-sm font-medium'>{t('Congratulations')}</div>
+                  <div className='text-sm font-medium'>
+                    {t('Congratulations')}
+                  </div>
                   {/* 中奖只报奖项名。奖池预览已经把量级（3000万/1000万/100万）说清楚了，
                       这里再报一遍 token 数只是噪音 —— 这一刻用户想知道的是「我中了什么」。
                       人民币金额依然从不出现：用户看到额度会去换算成几毛钱。 */}
@@ -394,9 +401,12 @@ export function LotteryDrawCard({
                     )}
                   >
                     {topPrize
-                      ? t('Tell friends to join, top prize is {{token}} tokens', {
-                          token: formatTokenHint(topPrize.token_hint),
-                        })
+                      ? t(
+                          'Tell friends to join, top prize is {{token}} tokens',
+                          {
+                            token: formatTokenHint(topPrize.token_hint),
+                          }
+                        )
                       : t('Tell friends to join in, and use it up on the way')}
                   </div>
                   <Button

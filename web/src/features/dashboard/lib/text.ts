@@ -27,6 +27,6 @@ export function getPreviewText(
 ): string {
   const plainText = toPlainText(content)
   return plainText.length > maxLength
-    ? plainText.substring(0, maxLength) + '...'
+    ? `${plainText.slice(0, maxLength)}...`
     : plainText
 }
