@@ -27,7 +27,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { getAccountAvatarUrl } from '@/lib/avatar'
 import { ROLE } from '@/lib/roles'
+import { useAuthStore } from '@/stores/auth-store'
 
 import { updateUserSettings } from '../../api'
 import {
@@ -66,6 +68,7 @@ interface NotificationTabProps {
 
 export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
   const { t } = useTranslation()
+  const { auth } = useAuthStore()
   const isAdmin = (profile?.role ?? 0) >= ROLE.ADMIN
   const [loading, setLoading] = useState(false)
   const [settings, setSettings] = useState<UserSettings>({
@@ -81,6 +84,7 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
     accept_unset_model_ratio_model: false,
     record_ip_log: false,
     upstream_model_update_notify_enabled: false,
+    avatar_preference: 'oauth',
   })
 
   // Update form field helper
@@ -110,6 +114,8 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
         record_ip_log: parsed.record_ip_log || false,
         upstream_model_update_notify_enabled:
           parsed.upstream_model_update_notify_enabled || false,
+        // 改造#39：没设置过 = 用第三方头像，所以缺省按 'oauth' 处理
+        avatar_preference: parsed.avatar_preference ?? 'oauth',
       })
     }
   }, [profile])
@@ -120,6 +126,19 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
       const response = await updateUserSettings(settings)
 
       if (response.success) {
+        // 改造#39：下拉菜单的头像读的是登录态而不是 profile，这里同步更新，
+        // 避免改完头像偏好要刷新页面才生效。
+        if (auth.user) {
+          const existingSetting =
+            typeof auth.user.setting === 'string'
+              ? parseUserSettings(auth.user.setting)
+              : (auth.user.setting ?? {})
+          auth.setUser({
+            ...auth.user,
+            setting: JSON.stringify({ ...existingSetting, ...settings }),
+          })
+        }
+
         toast.success(t('Settings updated successfully'))
         onUpdate()
       } else {
@@ -133,6 +152,19 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
   }
 
   const notifyType = normalizeNotifyType(settings.notify_type)
+
+  // 改造#39：头像来源偏好。只认 'default' 一个值，没设置过走「用第三方头像」。
+  const useAccountAvatar = settings.avatar_preference !== 'default'
+  const hasAccountAvatar = Boolean(getAccountAvatarUrl(profile ?? {}))
+
+  let avatarSourceHint = t(
+    'No avatar was found from your QQ email or GitHub account, so the default letter avatar is used.'
+  )
+  if (hasAccountAvatar) {
+    avatarSourceHint = useAccountAvatar
+      ? t('Using the avatar from your QQ email or GitHub account.')
+      : t('Using the default letter avatar.')
+  }
 
   return (
     <div className='space-y-4 sm:space-y-6'>
@@ -389,6 +421,25 @@ export function NotificationTab({ profile, onUpdate }: NotificationTabProps) {
             className='shrink-0'
             checked={settings.record_ip_log}
             onCheckedChange={(checked) => updateField('record_ip_log', checked)}
+          />
+        </div>
+
+        {/* Account Avatar (改造#39)：QQ 邮箱 / GitHub 来源的头像，或默认字母头像 */}
+        <div className='flex items-start justify-between gap-3 rounded-lg border p-3 sm:items-center sm:p-4'>
+          <div className='space-y-0.5'>
+            <Label htmlFor='accountAvatar'>{t('Use account avatar')}</Label>
+            <p className='text-muted-foreground text-xs sm:text-sm'>
+              {avatarSourceHint}
+            </p>
+          </div>
+          <Switch
+            id='accountAvatar'
+            className='shrink-0'
+            checked={useAccountAvatar}
+            disabled={!hasAccountAvatar}
+            onCheckedChange={(checked) =>
+              updateField('avatar_preference', checked ? 'oauth' : 'default')
+            }
           />
         </div>
       </div>

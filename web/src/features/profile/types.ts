@@ -118,6 +118,11 @@ export interface UserSettings {
   upstream_model_update_notify_enabled?: boolean
   /** Preferred interface/API response language */
   language?: string
+  /**
+   * 改造#39：头像来源偏好。`oauth` = 用 QQ 邮箱 / GitHub 推导的头像，
+   * `default` = 用默认字母头像。未设置时按 `oauth` 处理。
+   */
+  avatar_preference?: string
 }
 
 /**
@@ -145,6 +150,8 @@ export interface UpdateUserSettingsRequest {
   accept_unset_model_ratio_model?: boolean
   record_ip_log?: boolean
   upstream_model_update_notify_enabled?: boolean
+  /** 改造#39：头像来源偏好（oauth / default） */
+  avatar_preference?: string
 }
 
 /**

@@ -1411,6 +1411,8 @@ type UpdateUserSettingRequest struct {
 	UpstreamModelUpdateNotifyEnabled *bool   `json:"upstream_model_update_notify_enabled,omitempty"`
 	AcceptUnsetModelRatioModel       bool    `json:"accept_unset_model_ratio_model"`
 	RecordIpLog                      bool    `json:"record_ip_log"`
+	// 改造#39：头像来源偏好。指针 + omitempty，未提交时保持用户原值。
+	AvatarPreference *string `json:"avatar_preference,omitempty"`
 }
 
 func UpdateUserSetting(c *gin.Context) {
@@ -1506,13 +1508,30 @@ func UpdateUserSetting(c *gin.Context) {
 		upstreamModelUpdateNotifyEnabled = *req.UpstreamModelUpdateNotifyEnabled
 	}
 
-	// 构建设置
+	// 改造#39：头像来源偏好。未提交时保持用户原值，提交了则必须是合法取值。
+	avatarPreference := existingSettings.AvatarPreference
+	if req.AvatarPreference != nil {
+		if *req.AvatarPreference != dto.AvatarPreferenceOAuth && *req.AvatarPreference != dto.AvatarPreferenceDefault {
+			common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+			return
+		}
+		avatarPreference = *req.AvatarPreference
+	}
+
+	// 构建设置。
+	// 改造#39：model.UpdateUserSetting 会整体替换 setting JSON，而本接口只负责通知
+	// 与下面这几个偏好开关 —— 不在本表单里的设置（语言 / 边栏 / 扣费偏好）必须原样
+	// 带过去，否则用户每保存一次通知设置，这些配置就被静默重置回默认。
 	settings := dto.UserSetting{
 		NotifyType:                       req.QuotaWarningType,
 		QuotaWarningThreshold:            req.QuotaWarningThreshold,
 		UpstreamModelUpdateNotifyEnabled: upstreamModelUpdateNotifyEnabled,
 		AcceptUnsetRatioModel:            req.AcceptUnsetModelRatioModel,
 		RecordIpLog:                      req.RecordIpLog,
+		AvatarPreference:                 avatarPreference,
+		SidebarModules:                   existingSettings.SidebarModules,
+		BillingPreference:                existingSettings.BillingPreference,
+		Language:                         existingSettings.Language,
 	}
 
 	// 如果是webhook类型,添加webhook相关设置

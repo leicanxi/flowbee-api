@@ -16,6 +16,7 @@ type UserSetting struct {
 	SidebarModules                   string  `json:"sidebar_modules,omitempty"`                      // SidebarModules 左侧边栏模块配置
 	BillingPreference                string  `json:"billing_preference,omitempty"`                   // BillingPreference 扣费策略（订阅/钱包）
 	Language                         string  `json:"language,omitempty"`                             // Language 用户语言偏好 (zh, en)
+	AvatarPreference                 string  `json:"avatar_preference,omitempty"`                    // AvatarPreference 头像来源偏好（oauth=用第三方账号头像，default=用默认字母头像）
 }
 
 var (
@@ -23,4 +24,8 @@ var (
 	NotifyTypeWebhook = "webhook" // Webhook
 	NotifyTypeBark    = "bark"    // Bark 推送
 	NotifyTypeGotify  = "gotify"  // Gotify 推送
+
+	// 改造#39：头像来源偏好取值
+	AvatarPreferenceOAuth   = "oauth"   // 用第三方账号头像（QQ 邮箱推导 / GitHub）
+	AvatarPreferenceDefault = "default" // 用默认字母头像
 )
