@@ -64,3 +64,30 @@ func applyRankingQuotaTimeRange(query *gorm.DB, startTime int64, endTime int64) 
 	}
 	return query
 }
+
+// RankingUserTotal 周期内某个用户的 token 消耗汇总。
+type RankingUserTotal struct {
+	UserID      int    `json:"user_id"`
+	Username    string `json:"username"`
+	TotalTokens int64  `json:"total_tokens"`
+}
+
+// GetRankingUserTotals 按用户汇总周期内消耗的 token，供公开排行榜的
+// 「个人 token 用量」榜使用。
+//
+// 这里按 (user_id, username) 分组而不是只按 user_id：quota_data 记录的是
+// 写入当时快照下来的 username，用户改名会留下同一 user_id 的多行。跨库
+// 取 MAX(username) 在 MySQL 的 ONLY_FULL_GROUP_BY 下有额外约束，所以交给
+// 调用方按 user_id 合并，SQL 保持三库通用。
+func GetRankingUserTotals(startTime int64, endTime int64) ([]RankingUserTotal, error) {
+	var rows []RankingUserTotal
+	query := DB.Table("quota_data").
+		Select("user_id, username, sum(token_used) as total_tokens").
+		Where("user_id > 0").
+		Group("user_id, username").
+		Having("sum(token_used) > 0").
+		Order("total_tokens DESC")
+	query = applyRankingQuotaTimeRange(query, startTime, endTime)
+	err := query.Find(&rows).Error
+	return rows, err
+}

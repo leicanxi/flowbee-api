@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,6 +17,7 @@ const (
 	rankingHistoryLimit     = 10
 	rankingVendorLimit      = 5
 	rankingMoverLimit       = 6
+	rankingUserLimit        = 5
 	rankingOthersLabel      = "Others"
 	rankingUnknownVendor    = "Unknown"
 )
@@ -23,10 +25,21 @@ const (
 type RankingsResponse struct {
 	Models             []RankedModel      `json:"models"`
 	Vendors            []RankedVendor     `json:"vendors"`
+	Users              []RankedUser       `json:"users"`
 	TopMovers          []RankingMover     `json:"top_movers"`
 	TopDroppers        []RankingMover     `json:"top_droppers"`
 	ModelsHistory      ModelHistorySeries `json:"models_history"`
 	VendorShareHistory VendorShareSeries  `json:"vendor_share_history"`
+}
+
+// RankedUser 是公开排行榜上的一个条目。
+//
+// DisplayName 是已经脱敏的展示名，真实用户名不会下发到客户端（改造#41）。
+type RankedUser struct {
+	Rank        int     `json:"rank"`
+	DisplayName string  `json:"display_name"`
+	TotalTokens int64   `json:"total_tokens"`
+	Share       float64 `json:"share"`
 }
 
 type RankedModel struct {
@@ -200,11 +213,16 @@ func buildRankingsSnapshot(config rankingPeriodConfig, now time.Time) (*Rankings
 
 	meta := buildRankingModelMeta()
 	totalTokens := sumRankingTokens(currentTotals)
+	userTotals, err := model.GetRankingUserTotals(startTime, endTime)
+	if err != nil {
+		return nil, err
+	}
 	previousRankByModel := rankingRankMap(previousTotals)
 	previousTokensByModel := rankingTokenMap(previousTotals)
 
 	rankedModels := buildRankedModels(currentTotals, totalTokens, previousRankByModel, previousTokensByModel, meta, config.hasPrevious)
 	vendors := buildRankedVendors(currentTotals, previousTotals, totalTokens, meta, config.hasPrevious)
+	users := buildRankedUsers(userTotals, totalTokens)
 	modelHistory := buildModelHistory(currentBuckets, currentTotals, meta, config)
 	vendorHistory := buildVendorShareHistory(currentBuckets, vendors, totalTokens, meta, config)
 	movers, droppers := buildRankingMovers(rankedModels)
@@ -212,6 +230,7 @@ func buildRankingsSnapshot(config rankingPeriodConfig, now time.Time) (*Rankings
 	return &RankingsResponse{
 		Models:             limitRankedModels(rankedModels, rankingLeaderboardLimit),
 		Vendors:            vendors,
+		Users:              users,
 		TopMovers:          movers,
 		TopDroppers:        droppers,
 		ModelsHistory:      modelHistory,
@@ -594,4 +613,59 @@ func minInt(a int, b int) int {
 		return a
 	}
 	return b
+}
+
+// buildRankedUsers 把按用户聚合的 token 汇总整理成公开排行榜条目（改造#41）。
+//
+// 同一 user_id 可能因为改名留下多行，先按 user_id 合并求和；username 取首次
+// 出现的那条，SQL 已按 total_tokens 降序，所以通常是消耗最大的那个名字。
+func buildRankedUsers(totals []model.RankingUserTotal, totalTokens int64) []RankedUser {
+	mergedByUser := make(map[int]*model.RankingUserTotal, len(totals))
+	userOrder := make([]int, 0, len(totals))
+	for _, item := range totals {
+		if existing, ok := mergedByUser[item.UserID]; ok {
+			existing.TotalTokens += item.TotalTokens
+			continue
+		}
+		itemCopy := item
+		mergedByUser[item.UserID] = &itemCopy
+		userOrder = append(userOrder, item.UserID)
+	}
+
+	merged := make([]model.RankingUserTotal, 0, len(mergedByUser))
+	for _, userID := range userOrder {
+		merged = append(merged, *mergedByUser[userID])
+	}
+	sort.Slice(merged, func(i, j int) bool {
+		return merged[i].TotalTokens > merged[j].TotalTokens
+	})
+
+	limit := minInt(len(merged), rankingUserLimit)
+	rows := make([]RankedUser, 0, limit)
+	for idx := 0; idx < limit; idx++ {
+		item := merged[idx]
+		rows = append(rows, RankedUser{
+			Rank:        idx + 1,
+			DisplayName: maskRankingUsername(item.Username),
+			TotalTokens: item.TotalTokens,
+			Share:       rankingShare(item.TotalTokens, totalTokens),
+		})
+	}
+	return rows
+}
+
+// maskRankingUsername 对公开排行榜上的用户名做脱敏，只保留开头极少字符。
+//
+// 刻意不保留更多信息：两三个汉字的中文名整段隐去，否则「打码」后仍然等于
+// 实名。真实用户名绝不下发前端。
+func maskRankingUsername(name string) string {
+	runes := []rune(strings.TrimSpace(name))
+	switch {
+	case len(runes) <= 2:
+		return "***"
+	case len(runes) <= 4:
+		return string(runes[:1]) + "***"
+	default:
+		return string(runes[:2]) + "***"
+	}
 }

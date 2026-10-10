@@ -123,10 +123,22 @@ export type VendorShareSeries = {
   buckets: number
 }
 
+export type UserRanking = {
+  rank: number
+  /** Server-masked display name; the real username never reaches the client. */
+  display_name: string
+  /** Total tokens used by this user in the period. */
+  total_tokens: number
+  /** Share of all tokens served (0..1). */
+  share: number
+}
+
 export type RankingsSnapshot = {
   // Overall (all categories) ------------------------------------------------
   models: ModelRanking[]
   vendors: VendorRanking[]
+  /** Top users by token usage in the period (names are masked server-side). */
+  users: UserRanking[]
   /** Largest rank gainers in this period. */
   top_movers: RankingMover[]
   /** Largest rank losers in this period. */
