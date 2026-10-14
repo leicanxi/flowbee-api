@@ -166,12 +166,17 @@ func ExpireSponsorshipOrder(tradeNo string, expectedPaymentProvider string) erro
 // 刻意不含 userId：匿名条目一旦带上 id，"匿名"就只是前端假装不显示而已，
 // 打开网络面板就能对上号。也刻意不含金额与支持次数 —— 名单既不按金额排序，
 // 也不展示金额和次数的多寡，避免把"同等感谢"变成一句空话。
+//
+// Avatar 是本站代理路径而不是第三方头像地址：QQ 邮箱推导出的 qlogo 链接里
+// nk= 参数就是明文 QQ 号，直接下发等于把号挂在墙上。路径里的 token 带签名，
+// 且只对「本来就公开了身份的条目」签发 —— 匿名条目留空，前端继续走爱心图标。
 type SponsorEntry struct {
 	Name      string   `json:"name"`
 	Anonymous bool     `json:"anonymous"`
 	Message   string   `json:"message"`
 	Badges    []string `json:"badges"`
 	LastTime  int64    `json:"last_time"`
+	Avatar    string   `json:"avatar,omitempty"`
 }
 
 // UserSponsorshipStats 用户自己的支持概况（自己可见，含真实身份与次数）。
@@ -244,13 +249,17 @@ func sponsorshipDisplayMessage(message string, status string) string {
 }
 
 // sponsorshipUserNames 批量取用户显示名，避免名单渲染时的 N+1 查询。
+//
+// email / github_id / setting 是为推导公开页头像（改造#40）多查的：三者都是
+// 隐私字段，只在本函数内部用于判断「要不要给这个条目签发代理路径」，
+// 绝不会随 SponsorEntry 一起下发，匿名条目也不会用到它们。
 func sponsorshipUserNames(userIds []int) (map[int]User, error) {
 	result := make(map[int]User, len(userIds))
 	if len(userIds) == 0 {
 		return result, nil
 	}
 	var users []User
-	if err := DB.Select("id", "username", "display_name", "status").
+	if err := DB.Select("id", "username", "display_name", "status", "email", "github_id", "setting").
 		Where("id IN ?", userIds).Find(&users).Error; err != nil {
 		return nil, err
 	}
@@ -348,11 +357,20 @@ func ListSponsors(limit int) ([]SponsorEntry, error) {
 			if entry.Name == "" {
 				entry.Name = user.Username
 			}
+			// 头像只在「本来就公开了身份」的条目上签发：用户关掉了
+			// 「使用账号头像」，或本来就没有可推导的来源（非 QQ 邮箱、
+			// 没绑 GitHub）时留空，前端自然落回字母头像。
+			if userPublicAvatarUpstream(&user) != "" {
+				entry.Avatar = avatarProxyPathPrefix + avatarToken(user.Id)
+			}
 		}
 		if latest, ok := latestByUser[a.UserId]; ok {
 			if latest.Anonymous {
 				entry.Anonymous = true
 				entry.Name = ""
+				// 头像跟着名字一起收走：勾了匿名却还挂着头像，
+				// 「匿名」就只剩名字被藏起来了。
+				entry.Avatar = ""
 			}
 			// 匿名只隐藏身份，寄语照常展示：勾了匿名的人写的话
 			// 依然是写给这个站看的，不该连带被丢掉。

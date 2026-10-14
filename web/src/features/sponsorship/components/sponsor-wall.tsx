@@ -19,7 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { Heart } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { getUserAvatarFallback, getUserAvatarStyle } from '@/lib/avatar'
 import { cn } from '@/lib/utils'
 
@@ -89,8 +89,14 @@ function SponsorIdentity(props: { sponsor: SponsorEntry }) {
     )
   }
 
+  // 有后端签发的代理路径就显示真头像。加载失败（上游取不到图）时由 Base UI
+  // 自动落回下面的字母头像，不留白；用户关掉「使用账号头像」时后端根本不
+  // 下发这个字段，所以这里拿到的就是 undefined，直接走字母头像。
   return (
     <Avatar className='size-8 shrink-0'>
+      {sponsor.avatar ? (
+        <AvatarImage src={sponsor.avatar} alt={sponsor.name} />
+      ) : null}
       <AvatarFallback
         className='text-xs font-semibold text-white'
         style={getUserAvatarStyle(sponsor.name)}

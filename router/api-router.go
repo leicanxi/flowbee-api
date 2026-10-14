@@ -213,6 +213,10 @@ func SetApiRouter(router *gin.Engine) {
 		// 公开名单放在 /sponsors 而不是 /user 下 —— 它必须未登录也能读，
 		// 独立首页也是同源直连这个接口拿名单的。
 		apiRouter.GET("/sponsors", controller.GetSponsors)
+		// 赞助墙头像的本站代理（改造#40）。名单里下发的是 /api/avatar/<带签名的
+		// token>，不是第三方头像地址本身 —— qlogo 链接的 nk= 参数就是 QQ 号本人，
+		// 直接公开在页面 HTML 里，右键复制图片地址就拿到了。
+		apiRouter.GET("/avatar/:token", controller.GetProxyAvatar)
 		sponsorshipRoute := apiRouter.Group("/sponsorship")
 		sponsorshipRoute.Use(middleware.UserAuth())
 		{

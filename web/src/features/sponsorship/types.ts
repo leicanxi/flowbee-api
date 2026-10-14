@@ -28,6 +28,10 @@ export const SPONSOR_CUSTOM_TIER_ID = 'custom'
  *
  * 后端刻意不下发 userId 与金额：匿名条目带上 id 就不算匿名，
  * 而金额一旦可见，"同等感谢"就会变成一句空话。
+ *
+ * avatar 是本站的代理路径而不是第三方头像地址：qlogo 链接里的 nk= 参数
+ * 就是明文 QQ 号，直接下发等于把号挂在公开页上。后端只对「本来就公开了
+ * 身份的条目」下发它，拿不到时字段缺省，前端自行落回字母头像。
  */
 export interface SponsorEntry {
   name: string
@@ -35,6 +39,7 @@ export interface SponsorEntry {
   message: string
   badges: string[]
   last_time: number
+  avatar?: string
 }
 
 export interface SponsorshipTierOption {
