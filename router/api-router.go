@@ -136,6 +136,9 @@ func SetApiRouter(router *gin.Engine) {
 				// 反馈中心单点登录（改造#31）：只返回带签名的跳转地址，
 				// 由前端中转页决定是跳过去还是提示先绑邮箱。
 				selfRoute.GET("/feedback_sso", middleware.DisableCache(), controller.GetFeedbackSSOURL)
+				// Octop 单点登录（出站签名者）：Octop 登录页把浏览器整页送到
+				// /sso/octop 中转页，由该页取这里的签名地址再跳回 Octop 回调。
+				selfRoute.GET("/octop_sso", middleware.DisableCache(), controller.GetOctopSSOURL)
 				// 导出接口挂在 self 组并单独挂 AdminAuth，而不是写进 adminRoute：
 				// adminRoute 下混的是用户管理类路由，导出属于活动运营工具，
 				// 和它们放一起容易在后续维护中被误改权限。权限由 AdminAuth 中间件保证。
