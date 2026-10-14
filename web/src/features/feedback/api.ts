@@ -31,7 +31,10 @@ export interface FeedbackSsoResponse {
  * 让人一头撞进对方的错误页是最差的体验。
  */
 export async function getFeedbackSsoUrl(): Promise<FeedbackSsoResponse> {
+  // 两个开关都要给：后端失败时是 200 + success:false（业务错误），只关 skipErrorHandler
+  // 拦不住全局 toast，服务端的原始文案（如「单点登录未配置」）会直接弹到用户脸上。
   const res = await api.get('/api/user/feedback_sso', {
+    skipBusinessError: true,
     skipErrorHandler: true,
   })
   return res.data
