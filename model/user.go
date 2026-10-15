@@ -702,6 +702,9 @@ func (user *User) InsertWithTx(tx *gorm.DB, inviterId int) error {
 		}
 		user.Quota = common.QuotaForNewUser
 		user.AffCode = common.GetRandomString(4)
+		// 绑定邀请人。OAuth 注册的注册码在此落库，与 Insert 路径（controller/user.go
+		// 设置 InviterId 后调用）保持一致；漏掉这一步会让 OAuth 用户永远不产生邀请奖励。
+		user.InviterId = inviterId
 
 		// 初始化用户设置
 		if user.Setting == "" {
