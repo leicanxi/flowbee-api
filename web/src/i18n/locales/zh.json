@@ -5516,6 +5516,16 @@
     "Zero retention": "零数据保留",
     "Zhipu": "智谱",
     "Zhipu V4": "智谱 V4",
-    "Zoom": "缩放"
+    "Zoom": "缩放",
+    "Image studio": "生图工作室",
+    "Images are billed to your account balance": "生图费用从账户余额扣除",
+    "Describe the image you want to create": "描述你想生成的画面",
+    "Generate": "生成",
+    "No image returned": "上游未返回图片",
+    "Describe an image and press generate": "输入描述后点生成，结果会显示在这里",
+    "Image preview": "图片预览",
+    "Resolution is fixed by the model name": "分辨率由模型名决定，无需额外选择",
+    "Aspect ratio": "比例",
+    "Number of images": "生成张数"
   }
 }

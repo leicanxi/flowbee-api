@@ -12,6 +12,38 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// preparePlaygroundRelay authenticates the request by session and builds a
+// temporary in-memory token so the relay path can bill the logged-in user
+// without requiring them to paste an API key.
+func preparePlaygroundRelay(c *gin.Context) *types.NewAPIError {
+	useAccessToken := c.GetBool("use_access_token")
+	if useAccessToken {
+		return types.NewError(errors.New("暂不支持使用 access token"), types.ErrorCodeAccessDenied, types.ErrOptionWithSkipRetry())
+	}
+
+	relayInfo, err := relaycommon.GenRelayInfo(c, types.RelayFormatOpenAI, nil, nil)
+	if err != nil {
+		return types.NewError(err, types.ErrorCodeInvalidRequest, types.ErrOptionWithSkipRetry())
+	}
+
+	userId := c.GetInt("id")
+
+	// Write user context to ensure acceptUnsetRatio is available
+	userCache, err := model.GetUserCache(userId)
+	if err != nil {
+		return types.NewError(err, types.ErrorCodeQueryDataError, types.ErrOptionWithSkipRetry())
+	}
+	userCache.WriteContext(c)
+
+	tempToken := &model.Token{
+		UserId: userId,
+		Name:   fmt.Sprintf("playground-%s", relayInfo.UsingGroup),
+		Group:  relayInfo.UsingGroup,
+	}
+	_ = middleware.SetupContextForToken(c, tempToken)
+	return nil
+}
+
 func Playground(c *gin.Context) {
 	var newAPIError *types.NewAPIError
 
@@ -23,34 +55,10 @@ func Playground(c *gin.Context) {
 		}
 	}()
 
-	useAccessToken := c.GetBool("use_access_token")
-	if useAccessToken {
-		newAPIError = types.NewError(errors.New("暂不支持使用 access token"), types.ErrorCodeAccessDenied, types.ErrOptionWithSkipRetry())
+	newAPIError = preparePlaygroundRelay(c)
+	if newAPIError != nil {
 		return
 	}
-
-	relayInfo, err := relaycommon.GenRelayInfo(c, types.RelayFormatOpenAI, nil, nil)
-	if err != nil {
-		newAPIError = types.NewError(err, types.ErrorCodeInvalidRequest, types.ErrOptionWithSkipRetry())
-		return
-	}
-
-	userId := c.GetInt("id")
-
-	// Write user context to ensure acceptUnsetRatio is available
-	userCache, err := model.GetUserCache(userId)
-	if err != nil {
-		newAPIError = types.NewError(err, types.ErrorCodeQueryDataError, types.ErrOptionWithSkipRetry())
-		return
-	}
-	userCache.WriteContext(c)
-
-	tempToken := &model.Token{
-		UserId: userId,
-		Name:   fmt.Sprintf("playground-%s", relayInfo.UsingGroup),
-		Group:  relayInfo.UsingGroup,
-	}
-	_ = middleware.SetupContextForToken(c, tempToken)
 
 	Relay(c, types.RelayFormatOpenAI)
 }

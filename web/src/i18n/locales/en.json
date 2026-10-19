@@ -5381,6 +5381,16 @@
     "Zoom": "Zoom",
     "Token figures are estimated with your group subsidy rate (about ¥{{price}} per million tokens)": "Token figures are estimated with your group subsidy rate (about ¥{{price}} per million tokens)",
     "The full amount will be moved to your balance.": "The full amount will be moved to your balance.",
-    "Minimum transferable reward is {{amount}} tokens": "Minimum transferable reward is {{amount}} tokens"
+    "Minimum transferable reward is {{amount}} tokens": "Minimum transferable reward is {{amount}} tokens",
+    "Image studio": "Image studio",
+    "Images are billed to your account balance": "Images are billed to your account balance",
+    "Describe the image you want to create": "Describe the image you want to create",
+    "Generate": "Generate",
+    "No image returned": "No image returned",
+    "Describe an image and press generate": "Describe an image and press generate",
+    "Image preview": "Image preview",
+    "Resolution is fixed by the model name": "Resolution is fixed by the model name",
+    "Aspect ratio": "Aspect ratio",
+    "Number of images": "Number of images"
   }
 }

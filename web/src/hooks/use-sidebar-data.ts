@@ -66,6 +66,11 @@ export function useSidebarData(): SidebarData {
             icon: FlaskConical,
           },
           {
+            title: t('Image studio'),
+            url: '/image-studio',
+            icon: ImageIcon,
+          },
+          {
             title: t('Chat'),
             icon: MessageSquare,
             type: 'chat-presets',
