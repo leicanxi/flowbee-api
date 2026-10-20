@@ -65,7 +65,7 @@ FlowBee 需要把 DeepSeek、Claude、GPT、Gemini、Qwen 等多家上游收口�
 
 | 管理后台 | 模型广场 |
 |:---:|:---:|
-| <img src="docs/screenshots/dashboard.png" alt="管理后台" /> | <img src="docs/screenshots/model-marketplace.png" alt="模型广场" /> |
+| <img src="docs/screenshots/dashboard.png" alt="管理后台" width="100%" /> | <img src="docs/screenshots/model-marketplace.png" alt="模型广场" width="100%" /> |
 
 ## 线上运行数据
 
