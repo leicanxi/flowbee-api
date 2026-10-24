@@ -20,12 +20,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { SectionPageLayout } from '@/components/layout'
-import { TierStatusCard } from '@/features/invite/components/tier-status-card'
+import { WelfarePointsCard } from '@/features/invite/components/welfare-points-card'
 import { LotteryDrawCard } from '@/features/lottery/components/lottery-draw-card'
 import { CheckinCalendarCard } from '@/features/profile/components/checkin-calendar-card'
 import { AffiliateRewardsCard } from '@/features/wallet/components/affiliate-rewards-card'
-import { TransferDialog } from '@/features/wallet/components/dialogs/transfer-dialog'
-import { useAffiliate, useTopupInfo } from '@/features/wallet/hooks'
+import { useAffiliate } from '@/features/wallet/hooks'
 import type { UserWalletData } from '@/features/wallet/types'
 import { useStatus } from '@/hooks/use-status'
 import { getSelf } from '@/lib/api'
@@ -37,34 +36,25 @@ import { useAuthStore, type AuthUser } from '@/stores/auth-store'
  * 改造#3：将原本位于钱包页的「推荐计划」卡片与个人资料页的「签到」
  * 卡片集中到侧边栏「福利」入口下，方便用户在手机上集中操作。
  *
- * 改造#8：桌面端双列 —— 左列：档位摘要条在上、邀请在下（同一 flex 列，间距固定
- * 如个人资料页，避免签到卡跨行把网格拉高后标题上方出现空隙）；右列：签到。
- * 移动端单列 M1'：档位摘要条 → 邀请 → 签到。
+ * 桌面端双列：左列是福利积分摘要与邀请，右列是抽奖与签到。
+ * 移动端单列：福利积分摘要 → 邀请 → 签到。
  *
- * 改造#9：档位摘要条上移到邀请卡之前，作为福利页的主视觉入口。
+ * 余额分档已移除：福利组改由积分准入，调用速率仍由后台的
+ * ModelRequestRateLimitGroup 控制。
  *
- * 改造#27：摘要在上方的 Lv1–Lv5 轮播大卡已整块删除（与摘要条重复，详见
- * tier-status-card.tsx 文件头），左列只剩摘要条与邀请卡，列布局本身不变。
- *
- * 改造#12：右列新增「生日抽奖」卡（位于签到卡之上），受服务端活动开关控制。
+ * 右列新增「生日抽奖」卡（位于签到卡之上），受服务端活动开关控制。
  * 抽奖是限时活动，关闭后整张卡自动消失，不影响常驻布局。
  */
 export function Invite() {
   const { t } = useTranslation()
   const [user, setUser] = useState<UserWalletData | null>(null)
   const [userLoading, setUserLoading] = useState(true)
-  const [transferDialogOpen, setTransferDialogOpen] = useState(false)
 
   const { status } = useStatus()
-  const { topupInfo } = useTopupInfo()
-  const {
-    affiliateLink,
-    loading: affiliateLoading,
-    transferQuota,
-    transferring,
-  } = useAffiliate()
+  const { affiliateLink, loading: affiliateLoading } = useAffiliate()
 
   const checkinEnabled = status?.checkin_enabled === true
+  const welfarePointsEnabled = status?.welfare_points_enabled === true
   // 改造#12：抽奖活动开关。活动起止时间也由服务端下发，
   // 但前端只做展示，真正的拦截在服务端 —— 否则直接调接口就能绕过时间限制。
   const lotteryEnabled = status?.lottery_enabled === true
@@ -98,35 +88,19 @@ export function Invite() {
     fetchUser()
   }, [fetchUser])
 
-  const handleTransfer = useCallback(
-    async (amount: number) => {
-      const success = await transferQuota(amount)
-      if (success) {
-        await fetchUser()
-      }
-      return success
-    },
-    [transferQuota, fetchUser]
-  )
-
   return (
-    <>
-      <SectionPageLayout>
-        <SectionPageLayout.Title>{t('Welfare')}</SectionPageLayout.Title>
+    <SectionPageLayout>
+      <SectionPageLayout.Title>{t('Welfare')}</SectionPageLayout.Title>
         <SectionPageLayout.Content>
           <div className='mx-auto flex w-full max-w-7xl flex-col gap-4 sm:gap-5 lg:grid lg:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)] lg:items-start'>
             {/* 左列 wrapper：档位摘要条 + 邀请（改造#9：摘要条上移）。桌面同列上下紧排
                 （间距与个人资料页卡片一致）；若把摘要条/邀请拆成两个独立 grid item，
                 右列签到卡(row-span)会把网格行拉高，导致卡片之间出现空隙。 */}
             <div className='flex min-w-0 flex-col gap-4 sm:gap-5'>
-              <TierStatusCard user={user} />
+              <WelfarePointsCard user={user} enabled={welfarePointsEnabled} />
               <AffiliateRewardsCard
                 user={user}
                 affiliateLink={affiliateLink}
-                onTransfer={() => setTransferDialogOpen(true)}
-                complianceConfirmed={
-                  topupInfo?.payment_compliance_confirmed !== false
-                }
                 loading={userLoading || affiliateLoading}
               />
             </div>
@@ -148,16 +122,7 @@ export function Invite() {
               </div>
             )}
           </div>
-        </SectionPageLayout.Content>
-      </SectionPageLayout>
-
-      <TransferDialog
-        open={transferDialogOpen}
-        onOpenChange={setTransferDialogOpen}
-        onConfirm={handleTransfer}
-        availableQuota={user?.aff_quota ?? 0}
-        transferring={transferring}
-      />
-    </>
+      </SectionPageLayout.Content>
+    </SectionPageLayout>
   )
 }

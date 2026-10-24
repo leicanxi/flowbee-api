@@ -41,10 +41,8 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from '@/components/ui/tooltip'
-import { formatQuotaAsTokens } from '@/lib/format'
 import dayjs from '@/lib/dayjs'
 import { cn } from '@/lib/utils'
-import { useSystemConfigStore } from '@/stores/system-config-store'
 
 import { getCheckinStatus, performCheckin } from '../api'
 import type { CheckinRecord } from '../types'
@@ -61,10 +59,6 @@ export function CheckinCalendarCard({
   turnstileSiteKey,
 }: CheckinCalendarCardProps) {
   const { t } = useTranslation()
-  // 改造#13：签到奖励以 token 数展示，折算单价与抽奖卡同一来源
-  const tokenPricePerMillion = useSystemConfigStore(
-    (state) => state.config.currency.tokenPricePerMillion
-  )
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date()
     return new Date(now.getFullYear(), now.getMonth(), 1)
@@ -105,15 +99,15 @@ export function CheckinCalendarCard({
     const map: Record<string, number> = {}
     const records = checkinData?.stats?.records || []
     records.forEach((record: CheckinRecord) => {
-      map[record.checkin_date] = record.quota_awarded
+      map[record.checkin_date] = record.points_awarded
     })
     return map
   }, [checkinData?.stats?.records])
 
-  const monthlyQuota = useMemo(() => {
+  const monthlyPoints = useMemo(() => {
     const records = checkinData?.stats?.records || []
     return records.reduce(
-      (sum: number, record: CheckinRecord) => sum + (record.quota_awarded || 0),
+      (sum: number, record: CheckinRecord) => sum + (record.points_awarded || 0),
       0
     )
   }, [checkinData?.stats?.records])
@@ -150,7 +144,7 @@ export function CheckinCalendarCard({
         const res = await performCheckin(token)
         if (res.success && res.data) {
           toast.success(
-            `${t('Check-in successful! Received')} ${formatQuotaAsTokens(res.data.quota_awarded)} ${t('tokens')}`
+            `${t('Check-in successful! Received')} ${res.data.points_awarded} ${t('points')}`
           )
           refetch()
           setTurnstileModalVisible(false)
@@ -322,8 +316,8 @@ export function CheckinCalendarCard({
                 </div>
                 <p className='text-muted-foreground mt-1 line-clamp-2 text-xs sm:text-sm'>
                   {checkedToday && todayAward !== undefined
-                    ? `${t('Today')} +${formatQuotaAsTokens(todayAward)} ${t('tokens')}`
-                    : t('Check in daily to receive random quota rewards')}
+                    ? `${t('Today')} +${todayAward} ${t('points')}`
+                    : t('Check in daily to receive points')}
                 </p>
               </div>
             </button>
@@ -352,7 +346,7 @@ export function CheckinCalendarCard({
               </div>
               <div className='bg-card p-3 text-center sm:p-5'>
                 <div className='text-xl font-semibold tracking-tight tabular-nums sm:text-2xl'>
-                  {formatQuotaAsTokens(monthlyQuota)}
+                  {monthlyPoints}
                 </div>
                 <div className='text-muted-foreground mt-0.5 text-[10px] font-medium sm:mt-1 sm:text-xs'>
                   {t('This month')}
@@ -360,7 +354,7 @@ export function CheckinCalendarCard({
               </div>
               <div className='bg-card p-3 text-center sm:p-5'>
                 <div className='text-xl font-semibold tracking-tight tabular-nums sm:text-2xl'>
-                  {formatQuotaAsTokens(checkinData?.stats?.total_quota || 0)}
+                  {checkinData?.stats?.total_points || 0}
                 </div>
                 <div className='text-muted-foreground mt-0.5 text-[10px] font-medium sm:mt-1 sm:text-xs'>
                   {t('Total earned')}
@@ -449,7 +443,7 @@ export function CheckinCalendarCard({
                                 {t('Checked in')}
                               </div>
                               <div className='text-muted-foreground mt-0.5'>
-                                +{formatQuotaAsTokens(quotaAwarded)}
+                                +{quotaAwarded} {t('points')}
                               </div>
                             </div>
                           </TooltipContent>
@@ -468,21 +462,14 @@ export function CheckinCalendarCard({
 
                 <div className='bg-muted/30 text-muted-foreground rounded-lg border p-3 text-xs'>
                   <ul className='list-disc space-y-1 pl-5'>
+                    <li>{t('Check in daily to receive points')}</li>
                     <li>
-                      {t('Check in daily to receive random quota rewards')}
-                    </li>
-                    <li>
-                      {t('Rewards will be added directly to your balance')}
+                      {t(
+                        'Check-in points go to the daily points bucket and reset at 00:00 (UTC+8)'
+                      )}
                     </li>
                     <li>{t('Do not repeat check-in; only once per day')}</li>
                   </ul>
-                  {/* 改造#13：奖励数字改用 token 展示，折算口径必须交代清楚 */}
-                  <p className='mt-2 border-t pt-2 text-[11px] leading-snug'>
-                    {t(
-                      'Token figures are estimated with your group subsidy rate (about ¥{{price}} per million tokens)',
-                      { price: Number(tokenPricePerMillion.toFixed(3)) }
-                    )}
-                  </p>
                 </div>
               </div>
             </div>

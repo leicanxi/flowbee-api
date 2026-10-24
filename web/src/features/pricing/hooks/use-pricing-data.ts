@@ -42,6 +42,17 @@ export function usePricingData() {
     [status?.usd_exchange_rate, priceRate]
   )
 
+  // 倍率为 0 的分组就是「免费分组」：分组倍率乘 0，扣费为 0。这里不硬编码
+  // 分组名，站长改名 / 调倍率都自动跟随。免费模型 = enable_groups 里命中
+  // 其中任意一个分组的模型。
+  const freeGroups = useMemo(() => {
+    const names = new Set<string>()
+    for (const [name, ratio] of Object.entries(data?.group_ratio ?? {})) {
+      if (ratio === 0) names.add(name)
+    }
+    return names
+  }, [data?.group_ratio])
+
   const models = useMemo(() => {
     if (!data?.data || !data?.vendors) return []
 
@@ -58,9 +69,10 @@ export function usePricingData() {
         vendor_icon: vendor?.icon,
         vendor_description: vendor?.description,
         group_ratio: data.group_ratio,
+        is_free: (model.enable_groups ?? []).some((g) => freeGroups.has(g)),
       }
     })
-  }, [data])
+  }, [data, freeGroups])
 
   return {
     models,

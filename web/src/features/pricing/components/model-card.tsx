@@ -16,10 +16,15 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { ChevronRight, Copy } from 'lucide-react'
+import { ChevronRight, Copy, Gift } from 'lucide-react'
 import { memo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { getLobeIcon } from '@/lib/lobe-icon'
 import { cn } from '@/lib/utils'
@@ -211,8 +216,26 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
             )}
           </div>
           <div className='min-w-0'>
-            <h3 className='text-foreground truncate font-mono text-[15px] leading-tight font-bold'>
-              {props.model.model_name}
+            <h3 className='flex min-w-0 items-center gap-1.5 text-[15px] leading-tight font-bold'>
+              {props.model.is_free && (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Gift
+                        className='text-foreground size-3.5 shrink-0 cursor-help'
+                        strokeWidth={1.7}
+                        aria-hidden='true'
+                      />
+                    }
+                  />
+                  <TooltipContent side='top'>
+                    {t('This model can be used with free points')}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              <span className='truncate font-mono'>
+                {props.model.model_name}
+              </span>
             </h3>
             <div className='mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm sm:mt-1 sm:gap-x-3'>
               {priceSummary}

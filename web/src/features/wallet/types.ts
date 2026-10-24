@@ -40,7 +40,6 @@ export type PaymentResponse = ApiResponse<Record<string, unknown>> & {
 }
 export type StripePaymentResponse = ApiResponse<{ pay_link: string }>
 export type AffiliateCodeResponse = ApiResponse<string>
-export type AffiliateTransferResponse = ApiResponse
 export type CreemPaymentResponse = ApiResponse<{ checkout_url: string }>
 export type WaffoPaymentResponse = ApiResponse<
   { payment_url?: string } | string
@@ -213,14 +212,6 @@ export interface AmountRequest {
 }
 
 /**
- * Affiliate quota transfer request
- */
-export interface AffiliateTransferRequest {
-  /** Quota amount to transfer */
-  quota: number
-}
-
-/**
  * User wallet data
  */
 export interface UserWalletData {
@@ -242,12 +233,12 @@ export interface UserWalletData {
   aff_count: number
   /** User group */
   group: string
-  /**
-   * Sorted min_quota thresholds of the welfare balance-tier group.
-   * The index of the first threshold not exceeded by the user's quota is the
-   * user's current welfare level (0 = starter tier). Empty when unconfigured.
-   */
-  welfare_thresholds?: number[]
+  /** Daily welfare points bucket (resets every day) */
+  welfare_points_daily?: number
+  /** Permanent welfare points bucket (never expires) */
+  welfare_points_permanent?: number
+  /** Total spendable welfare points */
+  welfare_points_total?: number
 }
 
 /**

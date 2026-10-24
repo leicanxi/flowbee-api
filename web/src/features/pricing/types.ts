@@ -47,6 +47,8 @@ export type PricingModel = {
   audio_completion_ratio?: number | null
   enable_groups: string[]
   tags?: string
+  /** 该模型在某个倍率为 0 的分组里启用 —— 可消耗免费积分调用 */
+  is_free?: boolean
   supported_endpoint_types?: string[]
   key?: string
   group_ratio?: Record<string, number>

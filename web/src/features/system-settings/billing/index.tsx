@@ -29,6 +29,22 @@ const defaultBillingSettings: BillingSettings = {
   PreConsumedQuota: 0,
   QuotaForInviter: 0,
   QuotaForInvitee: 0,
+  WelfarePointsSetting: JSON.stringify(
+    {
+      enabled: false,
+      group: '福利',
+      daily_base_points: 0,
+      model_costs: { default: 1 },
+      consume_tiers: [{ min_quota: 0, points: 0 }],
+      checkin_min_points: 0,
+      checkin_max_points: 0,
+      invitee_points: 0,
+      inviter_points: 0,
+      sponsor_points: 0,
+    },
+    null,
+    2
+  ),
   TopUpLink: '',
   'general_setting.docs_link': '',
   'quota_setting.enable_free_model_pre_consume': true,

@@ -32,8 +32,6 @@ import {
 import { IconBadge } from '@/components/ui/icon-badge'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatQuotaAsTokens } from '@/lib/format'
-import { useSystemConfigStore } from '@/stores/system-config-store'
 
 import type { UserWalletData } from '../types'
 
@@ -44,23 +42,15 @@ const INVITE_SHARE_TEXT =
 interface AffiliateRewardsCardProps {
   user: UserWalletData | null
   affiliateLink: string
-  onTransfer: () => void
-  complianceConfirmed?: boolean
   loading?: boolean
 }
 
 export function AffiliateRewardsCard({
   user,
   affiliateLink,
-  onTransfer,
-  complianceConfirmed = true,
   loading,
 }: AffiliateRewardsCardProps) {
   const { t } = useTranslation()
-  // 改造#13：奖励以 token 数展示，折算单价与抽奖卡同一来源
-  const tokenPricePerMillion = useSystemConfigStore(
-    (state) => state.config.currency.tokenPricePerMillion
-  )
 
   const copyLink = useCallback(async () => {
     try {
@@ -109,8 +99,6 @@ export function AffiliateRewardsCard({
     )
   }
 
-  const hasRewards = (user?.aff_quota ?? 0) > 0
-
   return (
     <Card data-card-hover='false' className='bg-muted/20 py-0'>
       <CardContent className='grid gap-3 p-3 sm:gap-4 sm:p-4'>
@@ -125,42 +113,21 @@ export function AffiliateRewardsCard({
             {/* 改造#2：去掉 line-clamp-1，手机端完整展示推荐规则文案 */}
             <p className='text-muted-foreground text-xs'>
               {t(
-                'Earn rewards when users join through your referral link. Transfer accumulated rewards to your balance anytime.'
+                'Earn points when an invited friend tops up for the first time. Both of you receive a points reward.'
               )}
             </p>
           </div>
         </div>
 
-        {/* 改造#13：金额改为 token 展示。奖励本身仍是额度，这里只换展示单位，
-            折算由 formatQuotaAsTokens 统一完成（与抽奖卡同一单价口径）。 */}
-        <div className='grid grid-cols-3 gap-1.5 text-center'>
-          {[
-            [t('Pending'), formatQuotaAsTokens(user?.aff_quota ?? 0)],
-            [
-              t('Total Earned'),
-              formatQuotaAsTokens(user?.aff_history_quota ?? 0),
-            ],
-            [t('Invites'), String(user?.aff_count ?? 0)],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <div className='text-muted-foreground truncate text-[10px] font-medium tracking-wider uppercase'>
-                {label}
-              </div>
-              <div className='mt-0.5 truncate text-sm font-semibold tabular-nums'>
-                {value}
-              </div>
-            </div>
-          ))}
+        <div className='text-muted-foreground flex items-center justify-between text-xs'>
+          <span>
+            {t('Invites')}
+            <span className='text-foreground ml-1 font-semibold tabular-nums'>
+              {user?.aff_count ?? 0}
+            </span>
+          </span>
+          <span>{t('Points are credited after the first top-up')}</span>
         </div>
-
-        {/* 折算口径必须写出来：token 数是由额度按站内补贴单价反推的估算值，
-            与抽奖卡共用同一口径。用户看到「131.7万」要知道它是怎么来的。 */}
-        <p className='text-muted-foreground text-[11px] leading-snug'>
-          {t(
-            'Token figures are estimated with your group subsidy rate (about ¥{{price}} per million tokens)',
-            { price: Number(tokenPricePerMillion.toFixed(3)) }
-          )}
-        </p>
 
         <div className='flex flex-wrap items-center gap-2'>
           <Input
@@ -205,24 +172,7 @@ export function AffiliateRewardsCard({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          {hasRewards && (
-            <Button
-              onClick={onTransfer}
-              disabled={!complianceConfirmed}
-              className='h-9 shrink-0 px-3'
-              size='sm'
-            >
-              {t('Transfer to Balance')}
-            </Button>
-          )}
         </div>
-        {!complianceConfirmed ? (
-          <p className='text-muted-foreground text-xs'>
-            {t(
-              'Referral reward transfer is disabled until the administrator confirms compliance terms.'
-            )}
-          </p>
-        ) : null}
       </CardContent>
     </Card>
   )

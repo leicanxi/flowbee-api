@@ -123,6 +123,7 @@ func GetStatus(c *gin.Context) {
 		"user_agreement_enabled":      legalSetting.UserAgreement != "",
 		"privacy_policy_enabled":      legalSetting.PrivacyPolicy != "",
 		"checkin_enabled":             operation_setting.GetCheckinSetting().Enabled,
+		"welfare_points_enabled":      setting.GetWelfarePointsEnabled(),
 		"lottery_enabled":             operation_setting.GetLotterySetting().Enabled,
 		"lottery_start_time":          operation_setting.GetLotterySetting().StartTime,
 		"lottery_end_time":            operation_setting.GetLotterySetting().EndTime,

@@ -32,7 +32,7 @@ func setupChannelSelectAutoGroupsTest(t *testing.T) *gorm.DB {
 	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.ReplaceAll(t.Name(), "/", "_"))
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&model.Channel{}, &model.Ability{}))
+	require.NoError(t, db.AutoMigrate(&model.Channel{}, &model.Ability{}, &model.User{}, &model.WelfarePointLog{}))
 	model.DB = db
 	common.MemoryCacheEnabled = true
 	common.RetryTimes = 0
@@ -128,26 +128,32 @@ func TestCacheGetRandomSatisfiedChannelUsesTokenAutoGroupsWhenGlobalAutoIsEmpty(
 	assert.Equal(t, "default", common.GetContextKeyString(ctx, constant.ContextKeyAutoGroup))
 }
 
-// setupAutoGroupRateLimitEnv 在既有 auto 分组测试环境上启用分组级限流（内存模式），
-// 并让 token 的 auto 分组为 ["vip", "default"]。
-func setupAutoGroupRateLimitEnv(t *testing.T, tiersJSON string) {
+// setupAutoGroupRateLimitEnv enables group rate limiting (memory mode) and
+// optionally the welfare points gate on top of the existing auto-group fixture.
+func setupAutoGroupRateLimitEnv(t *testing.T, groupLimitsJSON string, welfarePointsJSON string) {
 	t.Helper()
 
 	originalEnabled := setting.ModelRequestRateLimitEnabled
 	originalDuration := setting.ModelRequestRateLimitDurationMinutes
-	originalTiers := setting.ModelRequestRateLimitBalanceTier2JSONString()
+	originalGroupLimits := setting.ModelRequestRateLimitGroup2JSONString()
+	originalPoints := setting.WelfarePointsSetting2JSONString()
 	originalRedisEnabled := common.RedisEnabled
 
 	setting.ModelRequestRateLimitEnabled = true
 	setting.ModelRequestRateLimitDurationMinutes = 1
 	common.RedisEnabled = false
-	require.NoError(t, setting.UpdateModelRequestRateLimitBalanceTierByJSONString(tiersJSON))
+	require.NoError(t, setting.UpdateModelRequestRateLimitGroupByJSONString(groupLimitsJSON))
+	if welfarePointsJSON == "" {
+		welfarePointsJSON = `{"enabled":false}`
+	}
+	require.NoError(t, setting.UpdateWelfarePointsSettingByJSONString(welfarePointsJSON))
 
 	t.Cleanup(func() {
 		setting.ModelRequestRateLimitEnabled = originalEnabled
 		setting.ModelRequestRateLimitDurationMinutes = originalDuration
 		common.RedisEnabled = originalRedisEnabled
-		require.NoError(t, setting.UpdateModelRequestRateLimitBalanceTierByJSONString(originalTiers))
+		require.NoError(t, setting.UpdateModelRequestRateLimitGroupByJSONString(originalGroupLimits))
+		require.NoError(t, setting.UpdateWelfarePointsSettingByJSONString(originalPoints))
 	})
 }
 
@@ -158,14 +164,13 @@ func TestCacheGetRandomSatisfiedChannelSkipsRateLimitedAutoGroup(t *testing.T) {
 	createChannelSelectAutoGroupsChannel(t, db, 2302, "default", modelName)
 	model.InitChannelCache()
 
-	setupAutoGroupRateLimitEnv(t, `{"vip":[{"min_quota":0,"total":0,"success":1}]}`)
+	setupAutoGroupRateLimitEnv(t, `{"vip":[0,1]}`, "")
 
 	gin.SetMode(gin.TestMode)
 	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
 	common.SetContextKey(ctx, constant.ContextKeyUserGroup, "default")
 	common.SetContextKey(ctx, constant.ContextKeyTokenAutoGroups, []string{"vip", "default"})
 	ctx.Set("id", 2300)
-	common.SetContextKey(ctx, constant.ContextKeyUserQuota, 0)
 
 	retry := 0
 	param := &RetryParam{
@@ -184,7 +189,7 @@ func TestCacheGetRandomSatisfiedChannelSkipsRateLimitedAutoGroup(t *testing.T) {
 	assert.Equal(t, "vip", selectedGroup)
 
 	// 模拟该用户在 vip 分组已用满成功额度（success=1）
-	RecordGroupRateLimitSuccess(2300, "vip", 0)
+	RecordGroupRateLimitSuccess(2300, "vip")
 
 	// 再次选择：vip 被门禁挡住，落到 default 分组
 	second, selectedGroup, err := CacheGetRandomSatisfiedChannel(param)
@@ -195,22 +200,22 @@ func TestCacheGetRandomSatisfiedChannelSkipsRateLimitedAutoGroup(t *testing.T) {
 	assert.Equal(t, "default", common.GetContextKeyString(ctx, constant.ContextKeyAutoGroup))
 }
 
-func TestCacheGetRandomSatisfiedChannelSkipsBelowMinimumAutoGroup(t *testing.T) {
+func TestCacheGetRandomSatisfiedChannelSkipsAutoGroupWithInsufficientWelfarePoints(t *testing.T) {
 	db := setupChannelSelectAutoGroupsTest(t)
-	const modelName = "auto-groups-below-min-model"
+	const modelName = "auto-groups-welfare-points-model"
 	createChannelSelectAutoGroupsChannel(t, db, 2311, "vip", modelName)
 	createChannelSelectAutoGroupsChannel(t, db, 2312, "default", modelName)
+	require.NoError(t, db.Create(&model.User{Id: 2310, Username: "auto-points-user", AffCode: "p2310"}).Error)
 	model.InitChannelCache()
 
-	// vip 的最低档要求余额 1000000，用户余额为 0
-	setupAutoGroupRateLimitEnv(t, `{"vip":[{"min_quota":1000000,"total":0,"success":1}]}`)
+	// vip 是福利积分分组，用户积分为 0，因此应被跳过。
+	setupAutoGroupRateLimitEnv(t, `{"vip":[0,1]}`, `{"enabled":true,"group":"vip","daily_base_points":0,"model_costs":{"default":1}}`)
 
 	gin.SetMode(gin.TestMode)
 	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
 	common.SetContextKey(ctx, constant.ContextKeyUserGroup, "default")
 	common.SetContextKey(ctx, constant.ContextKeyTokenAutoGroups, []string{"vip", "default"})
 	ctx.Set("id", 2310)
-	common.SetContextKey(ctx, constant.ContextKeyUserQuota, 0)
 
 	retry := 0
 	param := &RetryParam{
@@ -224,7 +229,7 @@ func TestCacheGetRandomSatisfiedChannelSkipsBelowMinimumAutoGroup(t *testing.T) 
 	channel, selectedGroup, err := CacheGetRandomSatisfiedChannel(param)
 	require.NoError(t, err)
 	require.NotNil(t, channel)
-	assert.Equal(t, 2312, channel.Id, "vip must be skipped when the user balance is below its minimum tier")
+	assert.Equal(t, 2312, channel.Id, "vip must be skipped when the user has insufficient welfare points")
 	assert.Equal(t, "default", selectedGroup)
 }
 
@@ -235,21 +240,17 @@ func TestCacheGetRandomSatisfiedChannelAllGroupsRateLimited(t *testing.T) {
 	createChannelSelectAutoGroupsChannel(t, db, 2322, "default", modelName)
 	model.InitChannelCache()
 
-	setupAutoGroupRateLimitEnv(t, `{
-		"vip":[{"min_quota":0,"total":0,"success":1}],
-		"default":[{"min_quota":0,"total":0,"success":1}]
-	}`)
+	setupAutoGroupRateLimitEnv(t, `{"vip":[0,1],"default":[0,1]}`, "")
 
 	gin.SetMode(gin.TestMode)
 	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
 	common.SetContextKey(ctx, constant.ContextKeyUserGroup, "default")
 	common.SetContextKey(ctx, constant.ContextKeyTokenAutoGroups, []string{"vip", "default"})
 	ctx.Set("id", 2320)
-	common.SetContextKey(ctx, constant.ContextKeyUserQuota, 0)
 
 	// 两个分组的成功额度都已用满
-	RecordGroupRateLimitSuccess(2320, "vip", 0)
-	RecordGroupRateLimitSuccess(2320, "default", 0)
+	RecordGroupRateLimitSuccess(2320, "vip")
+	RecordGroupRateLimitSuccess(2320, "default")
 
 	retry := 0
 	param := &RetryParam{

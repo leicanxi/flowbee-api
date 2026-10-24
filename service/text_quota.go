@@ -535,6 +535,7 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 		UseTimeSeconds:   int(summary.UseTimeSeconds),
 		IsStream:         relayInfo.IsStream,
 		Group:            relayInfo.UsingGroup,
+		BillingSource:    relayInfo.BillingSource,
 		Other:            other,
 	})
 	gopool.Go(func() {

@@ -94,7 +94,6 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 		}
 
 		userId := param.Ctx.GetInt("id")
-		userQuota := int64(common.GetContextKeyInt(param.Ctx, constant.ContextKeyUserQuota))
 
 		// startGroupIndex: the group index to start searching from
 		// startGroupIndex: 开始搜索的分组索引
@@ -114,15 +113,15 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 
 		for i := startGroupIndex; i < len(autoGroups); i++ {
 			autoGroup := autoGroups[i]
-			// 分组级限流门禁：auto 在此处才解析成真实分组，余额分档/分组
-			// 限速也在此处生效。被挡住的分组视同不可用，切换到下一个分组。
-			decision := CheckGroupRateLimit(autoGroup, userId, userQuota)
+			// 分组级门禁：auto 在此处才解析成真实分组，分组限速与福利积分
+			// 门槛也在此处生效。被挡住的分组视同不可用，切换到下一个分组。
+			decision := CheckGroupRateLimit(autoGroup, userId, param.ModelName)
 			if decision != GroupRateLimitAllow {
 				gateDenied++
 				if decision == GroupRateLimitSkipOverLimit {
 					logger.LogInfo(param.Ctx, fmt.Sprintf("auto group %s skipped: rate limit reached", autoGroup))
 				} else {
-					logger.LogInfo(param.Ctx, fmt.Sprintf("auto group %s skipped: user balance below the group's minimum tier", autoGroup))
+					logger.LogInfo(param.Ctx, fmt.Sprintf("auto group %s skipped: insufficient welfare points", autoGroup))
 				}
 				common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupIndex, i+1)
 				common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupRetryIndex, 0)

@@ -21,7 +21,6 @@ import { Gauge, Gift, Info } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import type { UserWalletData } from '@/features/wallet/types'
-import { resolveWelfareTier, welfareTierLabel } from '@/lib/welfare-tier'
 
 /**
  * 改造#33：钱包页标题下面那两个入口胶囊。
@@ -61,24 +60,18 @@ const CHIP_CLASS_NAME =
  */
 export function WelfareLinks(props: { user: UserWalletData | null }) {
   const { t } = useTranslation()
-  const tier = resolveWelfareTier(
-    props.user?.quota ?? 0,
-    props.user?.welfare_thresholds ?? []
-  )
+  const points = props.user?.welfare_points_total ?? 0
 
   return (
     <div className='flex flex-wrap items-center gap-2'>
       <Link to='/invite' className={CHIP_CLASS_NAME}>
         <Gauge className='text-info size-3.5 shrink-0' aria-hidden='true' />
         <span>
-          {t('Free model request rate')}
+          {t('Welfare points')}
           <span className='text-foreground font-semibold'>
-            ·{tier.locked ? t('Locked') : welfareTierLabel(t, tier.level)}
+            ·{points.toLocaleString()}
           </span>
-          <span className='text-muted-foreground'>({t('Set by balance')})</span>
         </span>
-        {/* 用 Info 而不是 ArrowUpRight：这一步不是「跳去另一个页面」，而是
-            「看这条规则是怎么定的」，箭头（尤其 ↗）会让人以为要离开本站。 */}
         <Info
           className='text-muted-foreground size-3 shrink-0'
           aria-hidden='true'

@@ -57,70 +57,48 @@ func TestModelRedisRateLimitUsesUTCRegardlessOfLocalTimezone(t *testing.T) {
 	assert.False(t, allowed, "an existing UTC timestamp inside the window must remain limited on a non-UTC host")
 }
 
-// setupGroupRateLimitSettings 保存/恢复分组限流相关全局设置，并在测试期间
-// 启用限流、设置 1 分钟窗口。
-func setupGroupRateLimitSettings(t *testing.T, tiersJSON string) {
+// setupGroupRateLimitSettings saves/restores the group rate limit settings and
+// enables the feature with a one-minute window for the test.
+func setupGroupRateLimitSettings(t *testing.T, groupLimitsJSON string) {
 	t.Helper()
 
 	originalEnabled := setting.ModelRequestRateLimitEnabled
 	originalDuration := setting.ModelRequestRateLimitDurationMinutes
-	originalTiers := setting.ModelRequestRateLimitBalanceTier2JSONString()
+	originalGroupLimits := setting.ModelRequestRateLimitGroup2JSONString()
 	originalRedisEnabled := common.RedisEnabled
 
 	setting.ModelRequestRateLimitEnabled = true
 	setting.ModelRequestRateLimitDurationMinutes = 1
 	common.RedisEnabled = false
-	require.NoError(t, setting.UpdateModelRequestRateLimitBalanceTierByJSONString(tiersJSON))
+	require.NoError(t, setting.UpdateModelRequestRateLimitGroupByJSONString(groupLimitsJSON))
 
 	t.Cleanup(func() {
 		setting.ModelRequestRateLimitEnabled = originalEnabled
 		setting.ModelRequestRateLimitDurationMinutes = originalDuration
 		common.RedisEnabled = originalRedisEnabled
-		require.NoError(t, setting.UpdateModelRequestRateLimitBalanceTierByJSONString(originalTiers))
+		require.NoError(t, setting.UpdateModelRequestRateLimitGroupByJSONString(originalGroupLimits))
 	})
 }
 
 func TestCheckGroupRateLimitDecisions(t *testing.T) {
-	setupGroupRateLimitSettings(t, `{
-		"cfg":[{"min_quota":0,"total":0,"success":2}],
-		"min":[{"min_quota":1000000,"total":0,"success":2}]
-	}`)
+	setupGroupRateLimitSettings(t, `{"cfg":[0,2]}`)
 
 	// 未配置的分组：放行
-	assert.Equal(t, GroupRateLimitAllow, CheckGroupRateLimit("unknown-group", 1, 0))
+	assert.Equal(t, GroupRateLimitAllow, CheckGroupRateLimit("unknown-group", 1, "gpt-4o"))
 
-	// 配置了分档且未超限：放行
-	assert.Equal(t, GroupRateLimitAllow, CheckGroupRateLimit("cfg", 1, 0))
-
-	// 余额低于所有档位最低要求：跳过
-	assert.Equal(t, GroupRateLimitSkipBelowMinimum, CheckGroupRateLimit("min", 1, 0))
+	// 配置了分组限速且未超限：放行
+	assert.Equal(t, GroupRateLimitAllow, CheckGroupRateLimit("cfg", 1, "gpt-4o"))
 
 	// 记满成功数后：超限跳过
-	RecordGroupRateLimitSuccess(1, "cfg", 0)
-	RecordGroupRateLimitSuccess(1, "cfg", 0)
-	assert.Equal(t, GroupRateLimitSkipOverLimit, CheckGroupRateLimit("cfg", 1, 0))
+	RecordGroupRateLimitSuccess(1, "cfg")
+	RecordGroupRateLimitSuccess(1, "cfg")
+	assert.Equal(t, GroupRateLimitSkipOverLimit, CheckGroupRateLimit("cfg", 1, "gpt-4o"))
 
 	// 另一个用户不受影响
-	assert.Equal(t, GroupRateLimitAllow, CheckGroupRateLimit("cfg", 2, 0))
+	assert.Equal(t, GroupRateLimitAllow, CheckGroupRateLimit("cfg", 2, "gpt-4o"))
 
-	// 限流功能关闭时：一律放行（含低于最低档的分组）
+	// 限流功能关闭时：一律放行
 	setting.ModelRequestRateLimitEnabled = false
-	assert.Equal(t, GroupRateLimitAllow, CheckGroupRateLimit("min", 1, 0))
-	assert.Equal(t, GroupRateLimitAllow, CheckGroupRateLimit("cfg", 1, 0))
+	assert.Equal(t, GroupRateLimitAllow, CheckGroupRateLimit("cfg", 1, "gpt-4o"))
 	setting.ModelRequestRateLimitEnabled = true
-}
-
-func TestCheckGroupRateLimitGroupFallback(t *testing.T) {
-	setupGroupRateLimitSettings(t, `{}`)
-
-	originalGroupLimits := setting.ModelRequestRateLimitGroup2JSONString()
-	require.NoError(t, setting.UpdateModelRequestRateLimitGroupByJSONString(`{"grp":[0,1]}`))
-	t.Cleanup(func() {
-		require.NoError(t, setting.UpdateModelRequestRateLimitGroupByJSONString(originalGroupLimits))
-	})
-
-	// 未配置余额分档时回落到分组限速配置
-	assert.Equal(t, GroupRateLimitAllow, CheckGroupRateLimit("grp", 1, 0))
-	RecordGroupRateLimitSuccess(1, "grp", 0)
-	assert.Equal(t, GroupRateLimitSkipOverLimit, CheckGroupRateLimit("grp", 1, 0))
 }

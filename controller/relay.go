@@ -126,6 +126,26 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		return
 	}
 
+	// auto 令牌的真实分组在渠道选择阶段才解析，由 CheckGroupRateLimit 在
+	// 候选分组门禁里处理积分；这里只处理已绑定具体分组的令牌。
+	if relayInfo.TokenGroup != "auto" {
+		if cost := service.WelfarePointsCostForGroup(relayInfo.UsingGroup, relayInfo.OriginModelName); cost > 0 {
+			ok, checkErr := model.CheckWelfarePoints(relayInfo.UserId, cost)
+			if checkErr != nil {
+				logger.LogWarn(c, fmt.Sprintf("welfare points check failed: user=%d model=%s: %v", relayInfo.UserId, relayInfo.OriginModelName, checkErr))
+			} else if !ok {
+				daily, permanent, _ := model.GetWelfarePointsBalance(relayInfo.UserId)
+				newAPIError = types.NewError(
+					fmt.Errorf("福利积分不足：本次调用需要 %d 积分，当前可用 %d 积分。可通过签到、邀请或每日消费返积分获取。", cost, daily+permanent),
+					types.ErrorCodeInsufficientUserQuota,
+					types.ErrOptionWithStatusCode(http.StatusTooManyRequests),
+					types.ErrOptionWithSkipRetry(),
+				)
+				return
+			}
+		}
+	}
+
 	needSensitiveCheck := setting.ShouldCheckPromptSensitive()
 	needCountToken := constant.CountToken
 	// Avoid building huge CombineText (strings.Join) when token counting and sensitive check are both disabled.
@@ -230,6 +250,8 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 
 		if newAPIError == nil {
 			relayInfo.LastError = nil
+			// 只有同步请求走到这里；异步任务不在本函数计积分。
+			service.ChargeWelfarePoints(relayInfo)
 			return
 		}
 
@@ -314,7 +336,7 @@ func getChannel(c *gin.Context, info *relaycommon.RelayInfo, retryParam *service
 	channel, selectGroup, err := service.CacheGetRandomSatisfiedChannel(retryParam)
 	if err != nil {
 		if errors.Is(err, service.ErrAutoGroupsRateLimited) {
-			return nil, types.NewError(fmt.Errorf("您已达到所有可用分组的限流上限，请稍后再试或充值后使用付费分组"), types.ErrorCodeGetChannelFailed,
+			return nil, types.NewError(fmt.Errorf("您已达到所有可用分组的限流上限或福利积分不足，请稍后再试或充值后使用付费分组"), types.ErrorCodeGetChannelFailed,
 				types.ErrOptionWithStatusCode(http.StatusTooManyRequests), types.ErrOptionWithSkipRetry())
 		}
 		return nil, types.NewError(fmt.Errorf("获取分组 %s 下模型 %s 的可用渠道失败（retry）: %s", selectGroup, info.OriginModelName, err.Error()), types.ErrorCodeGetChannelFailed, types.ErrOptionWithSkipRetry())

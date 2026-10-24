@@ -54,6 +54,21 @@ export async function getUserModels(): Promise<{
   return res.data
 }
 
+/**
+ * 只取某个分组下「当前真有渠道在跑」的模型。
+ *
+ * 概览的「免费模型可用数」用它：用户在模型广场按福利分组筛完能点得动的那批，
+ * 才是「可用」，配置里列了但渠道全挂的不算。
+ */
+export async function getGroupModels(group: string): Promise<{
+  success: boolean
+  message?: string
+  data?: string[]
+}> {
+  const res = await api.get('/api/user/models', { params: { group } })
+  return res.data
+}
+
 export async function getUserGroups(): Promise<{
   success: boolean
   message?: string

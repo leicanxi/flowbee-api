@@ -425,34 +425,6 @@ func GenerateAccessToken(c *gin.Context) {
 	return
 }
 
-type TransferAffQuotaRequest struct {
-	Quota int `json:"quota" binding:"required"`
-}
-
-func TransferAffQuota(c *gin.Context) {
-	if !requirePaymentCompliance(c) {
-		return
-	}
-
-	id := c.GetInt("id")
-	user, err := model.GetUserById(id, true)
-	if err != nil {
-		common.ApiError(c, err)
-		return
-	}
-	tran := TransferAffQuotaRequest{}
-	if err := c.ShouldBindJSON(&tran); err != nil {
-		common.ApiError(c, err)
-		return
-	}
-	err = user.TransferAffQuotaToQuota(tran.Quota)
-	if err != nil {
-		common.ApiErrorI18n(c, i18n.MsgUserTransferFailed, map[string]any{"Error": err.Error()})
-		return
-	}
-	common.ApiSuccessI18n(c, i18n.MsgUserTransferSuccess, nil)
-}
-
 func GetAffCode(c *gin.Context) {
 	id := c.GetInt("id")
 	user, err := model.GetUserById(id, true)
@@ -509,37 +481,36 @@ func buildSelfUserData(user *model.User) map[string]interface{} {
 	userSetting := user.GetSetting()
 	permissions := calculateUserPermissions(user.Role)
 	permissions["admin_permissions"] = authz.Capabilities(user.Id, user.Role)
-	welfareThresholds, _ := setting.GetBalanceTierLevels(
-		setting.WelfareGroupName,
-		int64(user.Quota),
-	)
+	welfarePointsDaily, welfarePointsPermanent := model.EffectiveWelfarePoints(user)
 	return map[string]interface{}{
-		"id":                user.Id,
-		"username":          user.Username,
-		"display_name":      user.DisplayName,
-		"role":              user.Role,
-		"status":            user.Status,
-		"email":             user.Email,
-		"github_id":         user.GitHubId,
-		"discord_id":        user.DiscordId,
-		"oidc_id":           user.OidcId,
-		"wechat_id":         user.WeChatId,
-		"telegram_id":       user.TelegramId,
-		"group":             user.Group,
-		"quota":             user.Quota,
-		"used_quota":        user.UsedQuota,
-		"request_count":     user.RequestCount,
-		"aff_code":          user.AffCode,
-		"aff_count":         user.AffCount,
-		"aff_quota":         user.AffQuota,
-		"aff_history_quota": user.AffHistoryQuota,
-		"inviter_id":        user.InviterId,
-		"linux_do_id":       user.LinuxDOId,
-		"welfare_thresholds": welfareThresholds,
-		"setting":           user.Setting,
-		"stripe_customer":   user.StripeCustomer,
-		"sidebar_modules":   userSetting.SidebarModules, // 正确提取sidebar_modules字段
-		"permissions":       permissions,
+		"id":                       user.Id,
+		"username":                 user.Username,
+		"display_name":             user.DisplayName,
+		"role":                     user.Role,
+		"status":                   user.Status,
+		"email":                    user.Email,
+		"github_id":                user.GitHubId,
+		"discord_id":               user.DiscordId,
+		"oidc_id":                  user.OidcId,
+		"wechat_id":                user.WeChatId,
+		"telegram_id":              user.TelegramId,
+		"group":                    user.Group,
+		"quota":                    user.Quota,
+		"used_quota":               user.UsedQuota,
+		"request_count":            user.RequestCount,
+		"aff_code":                 user.AffCode,
+		"aff_count":                user.AffCount,
+		"aff_quota":                user.AffQuota,
+		"aff_history_quota":        user.AffHistoryQuota,
+		"inviter_id":               user.InviterId,
+		"linux_do_id":              user.LinuxDOId,
+		"welfare_points_daily":     welfarePointsDaily,
+		"welfare_points_permanent": welfarePointsPermanent,
+		"welfare_points_total":     welfarePointsDaily + welfarePointsPermanent,
+		"setting":                  user.Setting,
+		"stripe_customer":          user.StripeCustomer,
+		"sidebar_modules":          userSetting.SidebarModules, // 正确提取sidebar_modules字段
+		"permissions":              permissions,
 	}
 }
 

@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import type { ColumnDef } from '@tanstack/react-table'
+import { Gift } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -26,6 +27,11 @@ import {
 } from '@/components/data-table'
 import { GroupBadge } from '@/components/group-badge'
 import { StatusBadge } from '@/components/status-badge'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { getLobeIcon } from '@/lib/lobe-icon'
 
 import { DEFAULT_TOKEN_UNIT } from '../constants'
@@ -84,6 +90,22 @@ export function usePricingColumns(
 
         return (
           <div className='flex max-w-full min-w-0 items-center gap-2'>
+            {model.is_free && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Gift
+                      className='text-foreground size-3.5 shrink-0 cursor-help'
+                      strokeWidth={1.7}
+                      aria-hidden='true'
+                    />
+                  }
+                />
+                <TooltipContent side='top'>
+                  {t('This model can be used with free points')}
+                </TooltipContent>
+              </Tooltip>
+            )}
             {modelIcon}
             <span className='truncate font-mono text-sm font-medium'>
               {model.model_name}

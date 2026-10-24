@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	hostsetting "github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"gorm.io/gorm"
 )
@@ -79,8 +80,9 @@ func (o *SponsorshipOrder) Insert() error {
 
 // CompleteSponsorshipOrder 完成一笔支持订单（幂等）。
 //
-// 与 CompleteSubscriptionOrder 相比，这里刻意什么都不"兑现"：
-// 不加余额、不加额度、不改用户分组、不建订阅实例。
+// 与 CompleteSubscriptionOrder 相比，这里刻意不兑现额度类资产：
+// 不加余额、不加额度、不改用户分组、不建订阅实例。唯一的附加权益是
+// 可配置的福利积分（长期桶），由本函数在同一事务内幂等发放。
 // 复用订阅那套支付管道时唯一必须绕开的就是 CreateUserSubscriptionFromPlanTx ——
 // 分组升降级写在那里面，只要不调用它，support 就绝不会碰 users.group。
 func CompleteSponsorshipOrder(tradeNo string, providerPayload string, expectedPaymentProvider string, actualPaymentMethod string) error {
@@ -94,6 +96,7 @@ func CompleteSponsorshipOrder(tradeNo string, providerPayload string, expectedPa
 	var logUserId int
 	var logMoney float64
 	var logPaymentMethod string
+	var logSponsorPoints int
 	err := DB.Transaction(func(tx *gorm.DB) error {
 		var order SponsorshipOrder
 		if err := lockForUpdate(tx).Where(refCol+" = ?", tradeNo).First(&order).Error; err != nil {
@@ -119,6 +122,15 @@ func CompleteSponsorshipOrder(tradeNo string, providerPayload string, expectedPa
 		if err := tx.Save(&order).Error; err != nil {
 			return err
 		}
+
+		sponsorPoints := hostsetting.GetWelfareSponsorPoints()
+		if sponsorPoints > 0 {
+			if err := AddWelfarePointsWithTx(tx, order.UserId, 0, sponsorPoints, WelfarePointsSourceSponsor, fmt.Sprintf("%d", order.Id)); err != nil {
+				return err
+			}
+			logSponsorPoints = sponsorPoints
+		}
+
 		logUserId = order.UserId
 		logMoney = order.Money
 		logPaymentMethod = order.PaymentMethod
@@ -129,6 +141,9 @@ func CompleteSponsorshipOrder(tradeNo string, providerPayload string, expectedPa
 	}
 	if logUserId > 0 {
 		msg := fmt.Sprintf("支持成功，金额: %.2f，支付方式: %s", logMoney, logPaymentMethod)
+		if logSponsorPoints > 0 {
+			msg = fmt.Sprintf("%s，赠送 %d 积分", msg, logSponsorPoints)
+		}
 		RecordLog(logUserId, LogTypeTopup, msg)
 	}
 	return nil

@@ -202,8 +202,10 @@ export interface TwoFASetupData {
 export interface CheckinRecord {
   /** Check-in date (YYYY-MM-DD) */
   checkin_date: string
-  /** Quota awarded for this check-in */
+  /** Legacy quota awarded for this check-in */
   quota_awarded: number
+  /** Welfare points awarded for this check-in */
+  points_awarded: number
 }
 
 /**
@@ -214,8 +216,10 @@ export interface CheckinStats {
   checked_in_today: boolean
   /** Total number of check-ins */
   total_checkins: number
-  /** Total quota earned from check-ins */
+  /** Legacy total quota earned from check-ins */
   total_quota: number
+  /** Total welfare points earned from check-ins */
+  total_points: number
   /** Current month check-in count */
   checkin_count: number
   /** Check-in records for the queried month */
@@ -228,6 +232,10 @@ export interface CheckinStats {
 export interface CheckinStatusResponse {
   /** Whether check-in feature is enabled */
   enabled: boolean
+  /** Minimum points awarded for a check-in */
+  min_points: number
+  /** Maximum points awarded for a check-in */
+  max_points: number
   /** Check-in statistics */
   stats: CheckinStats
 }
@@ -236,6 +244,8 @@ export interface CheckinStatusResponse {
  * Check-in action response
  */
 export interface CheckinResponse {
-  /** Quota awarded for this check-in */
+  /** Legacy quota awarded for this check-in */
   quota_awarded: number
+  /** Welfare points awarded for this check-in */
+  points_awarded: number
 }

@@ -330,6 +330,8 @@ func migrateDB() error {
 		&TwoFA{},
 		&TwoFABackupCode{},
 		&Checkin{},
+		&WelfarePointLog{},
+		&OverviewDailyStat{},
 		&LotteryPrizeStock{},
 		&LotteryDraw{},
 		&LotteryShare{},
@@ -397,6 +399,8 @@ func migrateDBFast() error {
 		{&TwoFA{}, "TwoFA"},
 		{&TwoFABackupCode{}, "TwoFABackupCode"},
 		{&Checkin{}, "Checkin"},
+		{&WelfarePointLog{}, "WelfarePointLog"},
+		{&OverviewDailyStat{}, "OverviewDailyStat"},
 		{&LotteryPrizeStock{}, "LotteryPrizeStock"},
 		{&LotteryDraw{}, "LotteryDraw"},
 		{&LotteryShare{}, "LotteryShare"},
@@ -465,6 +469,10 @@ func migrateClickHouseLogDB() error {
 	if err := LOG_DB.Exec(clickHouseLogCreateTableSQL(ttlDays)).Error; err != nil {
 		return err
 	}
+	// CREATE TABLE IF NOT EXISTS does not add columns to an existing table.
+	if err := LOG_DB.Exec("ALTER TABLE logs ADD COLUMN IF NOT EXISTS billing_source String DEFAULT ''").Error; err != nil {
+		return err
+	}
 	return syncClickHouseLogTTL(ttlDays)
 }
 
@@ -513,6 +521,7 @@ CREATE TABLE IF NOT EXISTS logs (
 	ip String DEFAULT '',
 	request_id String DEFAULT '',
 	upstream_request_id String DEFAULT '',
+	billing_source String DEFAULT '',
 	other String DEFAULT ''
 )
 ENGINE = MergeTree()

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/go-redis/redis/v8"
 )
@@ -22,7 +23,7 @@ const (
 )
 
 // ErrAutoGroupsRateLimited 表示 auto 令牌的所有候选分组都被分组级限流
-// （余额分档或分组限速）挡住，渠道选择未能进行。
+// 或积分门槛挡住，渠道选择未能进行。
 var ErrAutoGroupsRateLimited = errors.New("all auto groups are rate limited")
 
 // ModelRateLimitRedisKeys 生成 Redis 限流计数 key。
@@ -109,41 +110,42 @@ type GroupRateLimitDecision int
 const (
 	// GroupRateLimitAllow 表示该分组当前可用。
 	GroupRateLimitAllow GroupRateLimitDecision = iota
-	// GroupRateLimitSkipBelowMinimum 表示用户余额低于该分组所有档位的最低要求。
-	GroupRateLimitSkipBelowMinimum
+	// GroupRateLimitSkipInsufficientPoints 表示福利积分不足，无法使用该分组。
+	GroupRateLimitSkipInsufficientPoints
 	// GroupRateLimitSkipOverLimit 表示该分组的成功数限额已用尽。
 	GroupRateLimitSkipOverLimit
 )
 
-// groupSuccessLimit 解析分组当前适用的成功数限额：优先余额分档，其次分组限速。
-// limit 为 0 表示该分组没有独立限速配置。
-func groupSuccessLimit(group string, quota int64) (limit int, belowMinimum bool) {
-	state, _, success := setting.GetBalanceRateLimit(group, quota)
-	switch state {
-	case setting.BalanceTierBelowMinimum:
-		return 0, true
-	case setting.BalanceTierMatched:
-		return success, false
-	}
+// groupSuccessLimit 解析分组当前适用的成功数限额。
+// 返回 0 表示该分组没有独立限速配置。
+func groupSuccessLimit(group string) int {
 	_, groupSuccess, found := setting.GetGroupRateLimit(group)
 	if !found {
-		return 0, false
+		return 0
 	}
-	return groupSuccess, false
+	return groupSuccess
 }
 
 // CheckGroupRateLimit 判断 auto 请求现在能否使用指定分组。只读检查：
 // 成功请求的记账发生在请求完成之后（RecordGroupRateLimitSuccess），
 // 检查本身不消耗额度。总请求数限制不在 auto 路径执行——token bucket
 // 检查即扣减，而 auto 请求最终可能落在其他分组，会造成误扣。
-func CheckGroupRateLimit(group string, userId int, quota int64) GroupRateLimitDecision {
+func CheckGroupRateLimit(group string, userId int, modelName string) GroupRateLimitDecision {
+	// 福利积分是使用该分组的额外准入条件，与限流开关无关。积分不足时
+	// auto 令牌跳过该分组，继续尝试付费分组。
+	if cost := WelfarePointsCostForGroup(group, modelName); cost > 0 {
+		if ok, err := model.CheckWelfarePoints(userId, cost); err != nil {
+			common.SysLog(fmt.Sprintf("auto group welfare points check failed (group=%s): %s", group, err.Error()))
+		} else if !ok {
+			return GroupRateLimitSkipInsufficientPoints
+		}
+	}
+
 	if !setting.ModelRequestRateLimitEnabled {
 		return GroupRateLimitAllow
 	}
-	limit, belowMinimum := groupSuccessLimit(group, quota)
-	if belowMinimum {
-		return GroupRateLimitSkipBelowMinimum
-	}
+
+	limit := groupSuccessLimit(group)
 	if limit <= 0 {
 		return GroupRateLimitAllow
 	}
@@ -174,12 +176,12 @@ func CheckGroupRateLimit(group string, userId int, quota int64) GroupRateLimitDe
 // RecordGroupRateLimitSuccess 在请求成功结束后，按实际落地的分组记账一次
 // 成功请求。与入口预检（非 auto 令牌）共用同一套计数 key，保证 auto 令牌
 // 与纯分组令牌消耗的是同一份分组额度。
-func RecordGroupRateLimitSuccess(userId int, group string, quota int64) {
+func RecordGroupRateLimitSuccess(userId int, group string) {
 	if !setting.ModelRequestRateLimitEnabled {
 		return
 	}
-	limit, belowMinimum := groupSuccessLimit(group, quota)
-	if belowMinimum || limit <= 0 {
+	limit := groupSuccessLimit(group)
+	if limit <= 0 {
 		return
 	}
 
