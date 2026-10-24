@@ -65,6 +65,8 @@ const LOG_STAT_CARD_FALLBACK_KEYS = [
   'count',
   'quota',
   'tokens',
+  'cache-read',
+  'cache-creation',
   'average-rpm',
   'average-tpm',
 ] as const
@@ -117,12 +119,12 @@ const LazyFlowCharts = lazy(() =>
 function LogStatCardsFallback() {
   return (
     <div className='overflow-hidden rounded-lg border'>
-      <div className='divide-border/60 grid grid-cols-2 divide-x sm:grid-cols-3 lg:grid-cols-5'>
+      <div className='divide-border/60 grid min-w-0 grid-cols-2 divide-x sm:grid-cols-3 lg:grid-cols-7'>
         {LOG_STAT_CARD_FALLBACK_KEYS.map((key, index) => (
           <div
             key={key}
             className={cn(
-              'px-2.5 py-1.5 sm:px-5 sm:py-4',
+              'min-w-0 px-2.5 py-1.5 sm:px-3 sm:py-4 xl:px-4',
               index === LOG_STAT_CARD_FALLBACK_KEYS.length - 1 &&
                 'col-span-2 sm:col-span-1'
             )}
@@ -135,6 +137,9 @@ function LogStatCardsFallback() {
             <Skeleton className='mt-1 hidden h-3.5 w-28 md:block' />
           </div>
         ))}
+      </div>
+      <div className='border-t px-3 py-2'>
+        <Skeleton className='h-4 w-full max-w-md' />
       </div>
     </div>
   )
@@ -318,13 +323,13 @@ export function Dashboard() {
     ) : null
   const sectionActions = modelActions ?? flowActions
 
-  return (
-    <SectionPageLayout>
-      <SectionPageLayout.Title>{t(meta.titleKey)}</SectionPageLayout.Title>
-      {/* 概览是打开频率最高的一页，赞助入口挂在这里比藏在侧边栏底部有用得多。
-          用胶囊（Badge）而不是实心按钮：它是一个顺手的入口，
-          不该和页面里的主要操作抢注意力。 */}
-      {activeSection === 'overview' && (
+  if (activeSection === 'overview') {
+    // 概览是打开频率最高的一页，赞助入口挂在这里比藏在侧边栏底部有用得多。
+    // 用胶囊（Badge）而不是实心按钮：它是一个顺手的入口，
+    // 不该和页面里的主要操作抢注意力。
+    return (
+      <SectionPageLayout>
+        <SectionPageLayout.Title>{t(meta.titleKey)}</SectionPageLayout.Title>
         <SectionPageLayout.Actions>
           {/* 改造#22：QQ 群入口挂在「赞助一下」左侧。用 outline（描边、无填充）
               而不是和赞助一样的实心主色胶囊 —— 社群是求助通道，不是转化入口，
@@ -351,32 +356,38 @@ export function Dashboard() {
             {t('Sponsor us')}
           </Badge>
         </SectionPageLayout.Actions>
-      )}
+        <SectionPageLayout.Content>
+          <OverviewDashboard />
+        </SectionPageLayout.Content>
+      </SectionPageLayout>
+    )
+  }
+
+  return (
+    <SectionPageLayout>
+      <SectionPageLayout.Title>{t(meta.titleKey)}</SectionPageLayout.Title>
       <SectionPageLayout.Content>
         <div className='space-y-3 sm:space-y-4'>
-          {activeSection !== 'overview' && (
-            <div className='flex flex-wrap items-center justify-between gap-1.5 sm:gap-2'>
-              {showSectionTabs ? (
-                <Tabs value={activeSection} onValueChange={handleSectionChange}>
-                  <TabsList className='max-w-full flex-wrap justify-start group-data-horizontal/tabs:h-auto'>
-                    {visibleSections.map((section) => (
-                      <TabsTrigger key={section} value={section}>
-                        {t(SECTION_META[section].titleKey)}
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </Tabs>
-              ) : (
-                <div />
-              )}
-              {sectionActions != null && (
-                <div className='flex shrink-0 flex-wrap items-center gap-1.5 sm:gap-2'>
-                  {sectionActions}
-                </div>
-              )}
-            </div>
-          )}
-          {activeSection === 'overview' && <OverviewDashboard />}
+          <div className='flex flex-wrap items-center justify-between gap-1.5 sm:gap-2'>
+            {showSectionTabs ? (
+              <Tabs value={activeSection} onValueChange={handleSectionChange}>
+                <TabsList className='max-w-full flex-wrap justify-start group-data-horizontal/tabs:h-auto'>
+                  {visibleSections.map((section) => (
+                    <TabsTrigger key={section} value={section}>
+                      {t(SECTION_META[section].titleKey)}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            ) : (
+              <div />
+            )}
+            {sectionActions != null && (
+              <div className='flex shrink-0 flex-wrap items-center gap-1.5 sm:gap-2'>
+                {sectionActions}
+              </div>
+            )}
+          </div>
           {activeSection === 'models' && (
             <>
               <FadeIn>

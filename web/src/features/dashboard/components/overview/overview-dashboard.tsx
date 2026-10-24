@@ -35,7 +35,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 // import { motion, useReducedMotion } from 'motion/react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -53,8 +53,10 @@ import type {
 } from '@/features/keys/types'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { getUserModels } from '@/lib/api'
+import { handleServerError } from '@/lib/handle-server-error'
 // import { MOTION_TRANSITION } from '@/lib/motion'
 import { ROLE } from '@/lib/roles'
+import { requireServerSuccess } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -176,6 +178,8 @@ function buildDefaultKeyPayload(name: string): ApiKeyFormData {
     group: 'auto',
     auto_groups: [],
     cross_group_retry: true,
+    // 与密钥表单的默认值一致：允许客户端查询用户剩余额度。
+    allow_user_quota_query: true,
   }
 }
 
@@ -410,6 +414,8 @@ function ConnectionInfoPanel(props: { example: RequestExample }) {
       } else {
         toast.error(t('Failed to copy to clipboard'))
       }
+    } catch (error) {
+      handleServerError(error, t('Failed to copy to clipboard'))
     } finally {
       setCopying(false)
     }
@@ -532,6 +538,8 @@ function SetupStepCards(props: { example: RequestExample }) {
 
 export function OverviewDashboard() {
   const { t } = useTranslation()
+  const setupGuideId = useId()
+  const setupGuideToggleRef = useRef<HTMLButtonElement>(null)
   const user = useAuthStore((state) => state.auth.user)
   const { items: apiInfoItems } = useApiInfo()
   const {
@@ -582,7 +590,7 @@ export function OverviewDashboard() {
   const modelsQuery = useQuery({
     queryKey: ['dashboard', 'overview', 'user-models'],
     queryFn: async () => {
-      const result = await getUserModels()
+      const result = requireServerSuccess(await getUserModels())
       return result.success ? (result.data ?? []) : []
     },
     staleTime: 5 * 60 * 1000,
@@ -661,6 +669,9 @@ export function OverviewDashboard() {
     const nextExpanded = !setupGuideExpanded
     setManualSetupGuideExpanded(nextExpanded)
     saveSetupGuideExpanded(nextExpanded)
+    if (!nextExpanded && setupComplete) {
+      setupGuideToggleRef.current?.focus()
+    }
   }
 
   return (
@@ -680,7 +691,9 @@ export function OverviewDashboard() {
                 <Button
                   variant='outline'
                   size='sm'
+                  ref={setupGuideToggleRef}
                   aria-expanded={setupGuideExpanded}
+                  aria-controls={setupGuideId}
                   className='border-primary/30 bg-primary/10 text-primary hover:bg-primary/15 h-6 shrink-0 rounded-full px-2.5 text-[11.5px] font-medium'
                   onClick={handleSetupGuideToggle}
                 >
@@ -712,7 +725,7 @@ export function OverviewDashboard() {
 
         {setupGuideExpanded && (
           <CardStaggerItem className='bg-card h-full rounded-2xl border p-4 shadow-xs sm:p-5'>
-            <div className='flex h-full flex-col gap-3'>
+            <div id={setupGuideId} className='flex h-full flex-col gap-3'>
               <div className='flex items-center justify-between gap-2'>
                 <div className='flex items-center gap-2 text-sm font-semibold'>
                   <Sparkles

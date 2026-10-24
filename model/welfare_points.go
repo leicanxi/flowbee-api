@@ -297,7 +297,7 @@ func MigrateAffQuotaToBalance() error {
 			}
 			if movedQuota > 0 {
 				syncCreditUserQuotaCache(item.Id, movedQuota, "aff quota migration")
-				RecordLog(item.Id, LogTypeSystem, fmt.Sprintf("历史邀请额度 %s 已自动转入余额", logger.LogQuota(movedQuota)))
+				RecordLog(item.Id, LogTypeSystem, common.NewMessage("Historical invite quota {{quota}} was automatically transferred to your balance", map[string]any{"quota": logger.LogQuota(movedQuota)}))
 				migrated++
 			}
 		}
@@ -353,7 +353,7 @@ func GrantDailyConsumeRebate(date string) error {
 			common.SysError(fmt.Sprintf("failed to grant welfare consume rebate: user=%d date=%s: %s", row.UserId, date, err.Error()))
 			continue
 		}
-		RecordLog(row.UserId, LogTypeSystem, fmt.Sprintf("昨日消费返积分，获得 %d 积分", points))
+		RecordLog(row.UserId, LogTypeSystem, common.NewMessage("Daily spend rebate: earned {{points}} points", map[string]any{"points": points}))
 	}
 	return nil
 }

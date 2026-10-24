@@ -54,11 +54,11 @@ func StartOverviewStatsTask() {
 					setting.GetWelfarePointsSubsidyGroups(),
 				)
 				if err != nil {
-					logger.LogWarn(ctx, fmt.Sprintf("overview stats: recompute %s..%s failed: %v", yesterday, today, err))
+					logger.LogWarn(ctx, "overview stats: recompute %s..%s failed: %v", yesterday, today, err)
 					return
 				}
-				logger.LogDebug(ctx, fmt.Sprintf("overview stats: recomputed %s..%s, %d user-days in %s",
-					yesterday, today, rows, time.Since(start).Round(time.Millisecond)))
+				logger.LogDebug(ctx, "overview stats: recomputed %s..%s, %d user-days in %s",
+					yesterday, today, rows, time.Since(start).Round(time.Millisecond))
 
 				if overviewStatsPurgeDay == today {
 					return

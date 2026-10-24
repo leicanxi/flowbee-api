@@ -140,9 +140,9 @@ func CompleteSponsorshipOrder(tradeNo string, providerPayload string, expectedPa
 		return err
 	}
 	if logUserId > 0 {
-		msg := fmt.Sprintf("支持成功，金额: %.2f，支付方式: %s", logMoney, logPaymentMethod)
+		msg := common.NewMessage("Sponsorship succeeded, amount: {{amount}}, payment method: {{method}}", map[string]any{"amount": fmt.Sprintf("%.2f", logMoney), "method": logPaymentMethod})
 		if logSponsorPoints > 0 {
-			msg = fmt.Sprintf("%s，赠送 %d 积分", msg, logSponsorPoints)
+			msg = common.NewMessage("Sponsorship succeeded, amount: {{amount}}, payment method: {{method}}, awarded {{points}} points", map[string]any{"amount": fmt.Sprintf("%.2f", logMoney), "method": logPaymentMethod, "points": logSponsorPoints})
 		}
 		RecordLog(logUserId, LogTypeTopup, msg)
 	}

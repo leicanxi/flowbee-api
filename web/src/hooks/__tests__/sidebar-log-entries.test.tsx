@@ -100,7 +100,10 @@ function visibleConsoleEntries(consoleConfig: ConsoleConfig) {
 }
 
 function logEntries(entries: [string, string][]) {
-  return entries.filter(([, url]) => url.startsWith('/usage-logs/'))
+  // 审计日志是常驻入口（上游新增），不属于这里要约束的条件入口。
+  return entries.filter(
+    ([, url]) => url.startsWith('/usage-logs/') && url !== '/usage-logs/audit'
+  )
 }
 
 describe('侧边栏日志入口', () => {

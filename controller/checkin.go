@@ -1,10 +1,10 @@
 package controller
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	hostsetting "github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
@@ -15,7 +15,7 @@ import (
 func GetCheckinStatus(c *gin.Context) {
 	checkinSetting := operation_setting.GetCheckinSetting()
 	if !checkinSetting.Enabled {
-		common.ApiErrorMsg(c, "签到功能未启用")
+		common.ApiErrorT(c, "Check-in feature is not enabled")
 		return
 	}
 	userId := c.GetInt("id")
@@ -24,10 +24,7 @@ func GetCheckinStatus(c *gin.Context) {
 
 	stats, err := model.GetUserCheckinStats(userId, month)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		common.ApiError(c, err)
 		return
 	}
 
@@ -49,7 +46,7 @@ func GetCheckinStatus(c *gin.Context) {
 func DoCheckin(c *gin.Context) {
 	checkinSetting := operation_setting.GetCheckinSetting()
 	if !checkinSetting.Enabled {
-		common.ApiErrorMsg(c, "签到功能未启用")
+		common.ApiErrorT(c, "Check-in feature is not enabled")
 		return
 	}
 
@@ -57,19 +54,16 @@ func DoCheckin(c *gin.Context) {
 
 	checkin, err := model.UserCheckin(userId)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": err.Error(),
-		})
+		common.ApiError(c, err)
 		return
 	}
-	model.RecordLog(userId, model.LogTypeSystem, fmt.Sprintf("用户签到，获得 %d 积分", checkin.PointsAwarded))
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "签到成功",
-		"data": gin.H{
-			"quota_awarded":  checkin.QuotaAwarded,
-			"points_awarded": checkin.PointsAwarded,
-			"checkin_date":   checkin.CheckinDate},
+	model.RecordLog(userId, model.LogTypeSystem, common.NewMessage("Daily check-in: received {{quota}}, earned {{points}} points", map[string]any{
+		"quota":  logger.FormatQuota(checkin.QuotaAwarded),
+		"points": checkin.PointsAwarded,
+	}))
+	common.ApiSuccessT(c, "Check-in successful", gin.H{
+		"quota_awarded":  checkin.QuotaAwarded,
+		"points_awarded": checkin.PointsAwarded,
+		"checkin_date":   checkin.CheckinDate,
 	})
 }

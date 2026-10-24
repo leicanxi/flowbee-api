@@ -1,4 +1,5 @@
 .idea
+.review
 .vscode
 .zed
 .history
@@ -22,7 +23,7 @@ tiktoken_cache
 .gocache
 .gomodcache/
 .cache
-plans
+.plans
 .claude
 .cursor
 
@@ -39,7 +40,20 @@ skills-lock.json
 
 # Local-only live probes and scratch test workspaces.
 .local-tests/
-service/relayconvert/chat_responses_live_local_test.go
+relaykit/relayconvert/chat_responses_live_local_test.go
 service/openaicompat/chat_responses_live_local_test.go
 go.work
 go.work.sum
+
+# 本地开发杂物:设计稿、日志、截图、备份、临时脚本
+.design/
+.dev-api.err.log
+.dev-api.log
+.dev-web.log
+_dev_*.txt
+_shot_*.png
+_v2_*.png
+web/bin/
+
+# i18n sync 生成的报告
+web/src/i18n/locales/_reports/

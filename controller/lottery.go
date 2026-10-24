@@ -218,9 +218,11 @@ func DoLotteryDraw(c *gin.Context) {
 	}
 
 	if draw.QuotaAwarded > 0 {
-		model.RecordLog(userId, model.LogTypeSystem, fmt.Sprintf(
-			"福利抽奖第 %d 次，获得「%s」%s",
-			draw.Seq, draw.PrizeName, logger.LogQuota(draw.QuotaAwarded)))
+		model.RecordLog(userId, model.LogTypeSystem, common.NewMessage("Welfare lottery draw #{{seq}} won \"{{prize}}\" ({{quota}})", map[string]any{
+			"seq":   draw.Seq,
+			"prize": draw.PrizeName,
+			"quota": logger.LogQuota(draw.QuotaAwarded),
+		}))
 	}
 
 	respondLotteryState(c, setting, userId, model.LotteryRoundKey(setting), gin.H{

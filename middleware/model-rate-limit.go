@@ -11,6 +11,8 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/common/limiter"
 	"github.com/QuantumNous/new-api/constant"
+	"github.com/QuantumNous/new-api/i18n"
+	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting"
 
@@ -26,20 +28,10 @@ type rateLimitParams struct {
 	scope string
 }
 
-// overLimitMessage 生成限流 429 文案。分组限速的数字与余额无关，保留具体
-// 次数，让用户能据此判断重试节奏。
-func overLimitMessage(p rateLimitParams, countedFailures bool) string {
-	if countedFailures {
-		return fmt.Sprintf("您已达到总请求数限制：%d分钟内最多请求%d次，包括失败次数，请检查您的请求是否正确", setting.ModelRequestRateLimitDurationMinutes, p.totalMaxCount)
-	}
-	return fmt.Sprintf("您已达到请求数限制：%d分钟内最多请求%d次", setting.ModelRequestRateLimitDurationMinutes, p.successMaxCount)
-}
-
 // Redis限流处理器。scope 非空表示该分组配置了独立限速，
 // 计数 key 按分组隔离，避免与其他分组的调用互相挤占额度。
-func redisRateLimitHandler(p rateLimitParams) gin.HandlerFunc {
+func redisRateLimitHandler(p rateLimitParams, userId string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userId := strconv.Itoa(c.GetInt("id"))
 		ctx := context.Background()
 		rdb := common.RDB
 
@@ -48,12 +40,12 @@ func redisRateLimitHandler(p rateLimitParams) gin.HandlerFunc {
 		// 1. 检查成功请求数限制
 		allowed, err := service.CheckRedisRateLimit(ctx, rdb, successKey, p.successMaxCount, p.duration)
 		if err != nil {
-			fmt.Println("检查成功请求数限制失败:", err.Error())
+			fmt.Println(common.LogText("failed to check the successful request limit: %s", err.Error()))
 			abortWithOpenAiMessage(c, http.StatusInternalServerError, "rate_limit_check_failed")
 			return
 		}
 		if !allowed {
-			abortWithOpenAiMessage(c, http.StatusTooManyRequests, overLimitMessage(p, false))
+			abortWithOpenAiMessage(c, http.StatusTooManyRequests, i18n.T(c, i18n.MsgRateLimitReached, map[string]any{"Minutes": setting.ModelRequestRateLimitDurationMinutes, "Max": p.successMaxCount}))
 			return
 		}
 
@@ -70,13 +62,14 @@ func redisRateLimitHandler(p rateLimitParams) gin.HandlerFunc {
 			)
 
 			if err != nil {
-				fmt.Println("检查总请求数限制失败:", err.Error())
+				fmt.Println(common.LogText("failed to check the total request limit: %s", err.Error()))
 				abortWithOpenAiMessage(c, http.StatusInternalServerError, "rate_limit_check_failed")
 				return
 			}
 
 			if !allowed {
-				abortWithOpenAiMessage(c, http.StatusTooManyRequests, overLimitMessage(p, true))
+				abortWithOpenAiMessage(c, http.StatusTooManyRequests, i18n.T(c, i18n.MsgRateLimitTotalReached, map[string]any{"Minutes": setting.ModelRequestRateLimitDurationMinutes, "Max": p.totalMaxCount}))
+				return
 			}
 		}
 
@@ -84,41 +77,50 @@ func redisRateLimitHandler(p rateLimitParams) gin.HandlerFunc {
 		c.Next()
 
 		// 5. 如果请求成功，记录成功请求
-		if c.Writer.Status() < 400 {
+		if modelRequestSucceeded(c) {
 			service.RecordRedisRequest(ctx, rdb, successKey, p.successMaxCount)
 		}
 	}
 }
 
-// 内存限流处理器。成功数限制使用只读预检（Check），请求成功后再实际记账，
-// 与 Redis 路径语义一致：失败的请求不占成功额度。
-func memoryRateLimitHandler(p rateLimitParams) gin.HandlerFunc {
+// 内存限流处理器。成功数限制用预留（Reserve）占位：失败的请求释放名额，
+// 不占成功额度；与 Redis 路径语义一致。
+func memoryRateLimitHandler(p rateLimitParams, userId string) gin.HandlerFunc {
 	common.SharedInMemoryRateLimiter.Init(time.Duration(setting.ModelRequestRateLimitDurationMinutes) * time.Minute)
 
 	return func(c *gin.Context) {
-		userId := strconv.Itoa(c.GetInt("id"))
 		totalKey, successKey := service.ModelRateLimitMemoryKeys(p.scope, userId)
 
 		// 1. 检查总请求数限制（当totalMaxCount为0时跳过）
 		if p.totalMaxCount > 0 && !common.SharedInMemoryRateLimiter.Request(totalKey, p.totalMaxCount, p.duration) {
-			abortWithOpenAiMessage(c, http.StatusTooManyRequests, overLimitMessage(p, true))
+			abortWithOpenAiMessage(c, http.StatusTooManyRequests, i18n.T(c, i18n.MsgRateLimitTotalReached, map[string]any{"Minutes": setting.ModelRequestRateLimitDurationMinutes, "Max": p.totalMaxCount}))
 			return
 		}
 
-		// 2. 只读检查成功请求数限制，请求成功后在第 4 步实际记账
-		if !common.SharedInMemoryRateLimiter.Check(successKey, p.successMaxCount, p.duration) {
-			abortWithOpenAiMessage(c, http.StatusTooManyRequests, overLimitMessage(p, false))
-			return
+		// 2. 成功请求数限制：预留名额，请求结束时按结果记账或释放
+		var reservation *common.RateLimitReservation
+		if p.successMaxCount > 0 {
+			reservation = common.SharedInMemoryRateLimiter.Reserve(successKey, p.successMaxCount, p.duration)
+			if reservation == nil {
+				abortWithOpenAiMessage(c, http.StatusTooManyRequests, i18n.T(c, i18n.MsgRateLimitReached, map[string]any{"Minutes": setting.ModelRequestRateLimitDurationMinutes, "Max": p.successMaxCount}))
+				return
+			}
+			defer reservation.Complete(false)
 		}
 
 		// 3. 处理请求
 		c.Next()
 
-		// 4. 如果请求成功，记录到成功请求计数中
-		if c.Writer.Status() < 400 && p.successMaxCount > 0 {
-			common.SharedInMemoryRateLimiter.Request(successKey, p.successMaxCount, p.duration)
-		}
+		// 4. 如果请求成功，记入成功请求计数
+		reservation.Complete(modelRequestSucceeded(c))
 	}
+}
+
+// modelRequestSucceeded 判定一次请求是否成功：HTTP 状态码之外，
+// 流式响应中途失败（状态 200 但流内报错）也视为失败，不占成功额度。
+func modelRequestSucceeded(c *gin.Context) bool {
+	status, _ := common.GetContextKeyType[*relaycommon.StreamStatus](c, constant.ContextKeyResponseStreamStatus)
+	return c.Writer.Status() < 400 && !status.ResponseFailed()
 }
 
 // ModelRequestRateLimit 模型请求限流中间件。
@@ -145,6 +147,8 @@ func ModelRequestRateLimit() func(c *gin.Context) {
 			group = common.GetContextKeyString(c, constant.ContextKeyUserGroup)
 		}
 
+		userId := strconv.Itoa(c.GetInt("id"))
+
 		// 计数隔离范围：仅对配置了独立限速的分组按分组记账，
 		// 未配置的分组继续共享官方原始计数 key（历史行为不变）。
 		scope := ""
@@ -167,14 +171,14 @@ func ModelRequestRateLimit() func(c *gin.Context) {
 			scope:           scope,
 		}
 		if common.RedisEnabled {
-			redisRateLimitHandler(params)(c)
+			redisRateLimitHandler(params, userId)(c)
 		} else {
-			memoryRateLimitHandler(params)(c)
+			memoryRateLimitHandler(params, userId)(c)
 		}
 
 		// auto 令牌：请求结束后按实际落地的分组补记分组级成功数。
 		// 落地分组未配置分组级限速时不记账；请求失败也不记账。
-		if group == "auto" && c.Writer != nil && c.Writer.Status() < http.StatusBadRequest {
+		if group == "auto" && modelRequestSucceeded(c) {
 			if resolvedGroup := common.GetContextKeyString(c, constant.ContextKeyAutoGroup); resolvedGroup != "" {
 				service.RecordGroupRateLimitSuccess(c.GetInt("id"), resolvedGroup)
 			}

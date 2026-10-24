@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/relaykit/types"
@@ -16,43 +17,61 @@ func formatNotifyType(channelId int, status int) string {
 	return fmt.Sprintf("%s_%d_%d", dto.NotifyTypeChannelUpdate, channelId, status)
 }
 
+func shouldCloseActiveWebSocketsAfterDisable(channelId int) bool {
+	channel, err := model.GetChannelById(channelId, true)
+	if err != nil {
+		common.SysLog(common.LogText("failed to check channel status before closing active websockets: channel_id=%d, error=%v", channelId, err))
+		return true
+	}
+	return channel.Status != common.ChannelStatusEnabled
+}
+
 // disable & notify
 func DisableChannel(channelError types.ChannelError, reason string) {
-	common.SysLog(fmt.Sprintf("通道「%s」（#%d）发生错误，准备禁用，原因：%s", channelError.ChannelName, channelError.ChannelId, common.LocalLogPreview(reason)))
+	common.SysLog(common.LogText("channel %q (#%d) failed, disabling it, reason: %s", channelError.ChannelName, channelError.ChannelId, common.LocalLogPreview(reason)))
 
 	// 检查是否启用自动禁用功能
 	if !channelError.AutoBan {
-		common.SysLog(fmt.Sprintf("通道「%s」（#%d）未启用自动禁用功能，跳过禁用操作", channelError.ChannelName, channelError.ChannelId))
+		common.SysLog(common.LogText("channel %q (#%d) has automatic disabling turned off, skipping", channelError.ChannelName, channelError.ChannelId))
 		return
 	}
 
 	success := model.UpdateChannelStatus(channelError.ChannelId, channelError.UsingKey, common.ChannelStatusAutoDisabled, reason)
 	if success {
-		subject := fmt.Sprintf("通道「%s」（#%d）已被禁用", channelError.ChannelName, channelError.ChannelId)
-		content := common.EmailHeading("通道已被禁用") +
-			common.EmailParagraph("自动巡检发现通道异常，已停止向其调度请求：") +
-			common.EmailInfoTable([][2]string{
-				{"通道名称", channelError.ChannelName},
-				{"通道 ID", fmt.Sprintf("#%d", channelError.ChannelId)},
-				{"禁用原因", reason},
-				{"时间", time.Now().Format("2006-01-02 15:04:05")},
-			})
-		NotifyRootUser(formatNotifyType(channelError.ChannelId, common.ChannelStatusAutoDisabled), subject, content)
+		if shouldCloseActiveWebSocketsAfterDisable(channelError.ChannelId) {
+			CloseActiveWebSocketsForChannel(channelError.ChannelId, ChannelDisabledCloseReason)
+		}
+		params := map[string]any{"Name": channelError.ChannelName, "Id": channelError.ChannelId, "Reason": reason}
+		NotifyChannelWatchers(formatNotifyType(channelError.ChannelId, common.ChannelStatusAutoDisabled), func(lang string) (string, string) {
+			subject := i18n.Translate(lang, i18n.MsgChannelNotifyDisabledSubject, params)
+			content := common.EmailHeading(subject) +
+				common.EmailParagraph(i18n.Translate(lang, i18n.MsgChannelNotifyDisabledIntro)) +
+				common.EmailInfoTable([][2]string{
+					{i18n.Translate(lang, i18n.MsgChannelNotifyLabelName), channelError.ChannelName},
+					{i18n.Translate(lang, i18n.MsgChannelNotifyLabelId), fmt.Sprintf("#%d", channelError.ChannelId)},
+					{i18n.Translate(lang, i18n.MsgChannelNotifyLabelReason), reason},
+					{i18n.Translate(lang, i18n.MsgChannelNotifyLabelTime), time.Now().Format("2006-01-02 15:04:05")},
+				})
+			return subject, content
+		})
 	}
 }
 
 func EnableChannel(channelId int, usingKey string, channelName string) {
 	success := model.UpdateChannelStatus(channelId, usingKey, common.ChannelStatusEnabled, "")
 	if success {
-		subject := fmt.Sprintf("通道「%s」（#%d）已被启用", channelName, channelId)
-		content := common.EmailHeading("通道已恢复启用") +
-			common.EmailParagraph("该通道已重新加入调度：") +
-			common.EmailInfoTable([][2]string{
-				{"通道名称", channelName},
-				{"通道 ID", fmt.Sprintf("#%d", channelId)},
-				{"时间", time.Now().Format("2006-01-02 15:04:05")},
-			})
-		NotifyRootUser(formatNotifyType(channelId, common.ChannelStatusEnabled), subject, content)
+		params := map[string]any{"Name": channelName, "Id": channelId}
+		NotifyChannelWatchers(formatNotifyType(channelId, common.ChannelStatusEnabled), func(lang string) (string, string) {
+			subject := i18n.Translate(lang, i18n.MsgChannelNotifyEnabledSubject, params)
+			content := common.EmailHeading(subject) +
+				common.EmailParagraph(i18n.Translate(lang, i18n.MsgChannelNotifyEnabledIntro)) +
+				common.EmailInfoTable([][2]string{
+					{i18n.Translate(lang, i18n.MsgChannelNotifyLabelName), channelName},
+					{i18n.Translate(lang, i18n.MsgChannelNotifyLabelId), fmt.Sprintf("#%d", channelId)},
+					{i18n.Translate(lang, i18n.MsgChannelNotifyLabelTime), time.Now().Format("2006-01-02 15:04:05")},
+				})
+			return subject, content
+		})
 	}
 }
 
