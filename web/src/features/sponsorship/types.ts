@@ -82,6 +82,10 @@ export interface UserSponsorshipStats {
   badges: string[]
   anonymous: boolean
   message: string
+  /** 当前用户本月已付款的支持次数。 */
+  monthly_support_count: number
+  /** 全站本月已付款的去重支持人数。 */
+  monthly_supporter_count: number
 }
 
 export interface SponsorshipPayRequest {

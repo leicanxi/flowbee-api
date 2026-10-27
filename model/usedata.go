@@ -191,6 +191,34 @@ func GetGroupUsedTokenTotal(group string) (int64, error) {
 	return total, err
 }
 
+// WelfareModelUsage 是某个用户在指定分组内按模型聚合的用量。
+// 只取请求次数和最后使用时间；福利积分由调用方按当前的单次积分价换算，
+// 这样后台调整价格后不需要回填历史数据。
+type WelfareModelUsage struct {
+	ModelName    string
+	RequestCount int64
+	LastUsedAt   int64
+}
+
+// GetWelfareModelUsage 汇总用户在福利分组内、从 startTimestamp 起按模型拆分的请求次数。
+//
+// 福利分组的分组倍率是 0，logs.quota 恒为 0；quota_data 里的 count 是唯一
+// 可靠的“有没有用过、用了多少次”的统计口径，token_used 只覆盖文本模型，
+// 所以这里不取 token。
+func GetWelfareModelUsage(userId int, group string, startTimestamp int64) ([]WelfareModelUsage, error) {
+	if userId <= 0 || group == "" {
+		return nil, nil
+	}
+	var rows []WelfareModelUsage
+	err := DB.Table("quota_data").
+		Select("model_name, COALESCE(SUM(count), 0) AS request_count, COALESCE(MAX(created_at), 0) AS last_used_at").
+		Where("user_id = ? AND use_group = ? AND created_at >= ? AND model_name <> ?", userId, group, startTimestamp, "").
+		Group("model_name").
+		Order("request_count DESC").
+		Scan(&rows).Error
+	return rows, err
+}
+
 func GetAllQuotaDates(startTime int64, endTime int64, username string) (quotaData []*QuotaData, err error) {
 	if username != "" {
 		return GetQuotaDataByUsername(username, startTime, endTime)

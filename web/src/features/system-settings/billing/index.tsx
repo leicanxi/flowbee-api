@@ -34,6 +34,7 @@ const defaultBillingSettings: BillingSettings = {
       enabled: false,
       group: '福利',
       daily_base_points: 0,
+      new_user_points: 0,
       model_costs: { default: 1 },
       consume_tiers: [{ min_quota: 0, points: 0 }],
       checkin_min_points: 0,

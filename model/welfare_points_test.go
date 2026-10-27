@@ -1,12 +1,14 @@
 package model
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func useWelfarePointsTestSetting(t *testing.T, jsonValue string) {
@@ -137,6 +139,47 @@ func TestGrantDailyConsumeRebateUsesNetWalletConsumption(t *testing.T) {
 	_, permanent, err = GetWelfarePointsBalance(user.Id)
 	require.NoError(t, err)
 	assert.Equal(t, 5, permanent)
+}
+
+func TestNewUserRegistrationGrantsPermanentWelfarePoints(t *testing.T) {
+	setupUserUpdateTestState(t)
+	useWelfarePointsTestSetting(t, `{"enabled":true,"group":"福利","model_costs":{"default":1},"new_user_points":10}`)
+
+	user := User{
+		Username:    "welfare-new-user",
+		Password:    "unused-password-hash",
+		Status:      1,
+		Role:        1,
+		Group:       "default",
+		AuthVersion: 1,
+	}
+	require.NoError(t, user.Insert(0))
+	_, permanent, err := GetWelfarePointsBalance(user.Id)
+	require.NoError(t, err)
+	assert.Equal(t, 10, permanent, "the sign-up gift goes to the permanent bucket")
+
+	// OAuth registration creates the account through InsertWithTx.
+	oauthUser := User{
+		Username:    "welfare-new-oauth-user",
+		Status:      1,
+		Role:        1,
+		Group:       "default",
+		AuthVersion: 1,
+	}
+	require.NoError(t, DB.Transaction(func(tx *gorm.DB) error {
+		return oauthUser.InsertWithTx(tx, 0)
+	}))
+	_, permanent, err = GetWelfarePointsBalance(oauthUser.Id)
+	require.NoError(t, err)
+	assert.Equal(t, 10, permanent, "OAuth sign-up must receive the same gift")
+
+	var giftLogs int64
+	require.NoError(t, DB.Model(&WelfarePointLog{}).
+		Where("source = ? AND source_ref IN ?", WelfarePointsSourceNewUser, []string{
+			strconv.Itoa(user.Id), strconv.Itoa(oauthUser.Id),
+		}).
+		Count(&giftLogs).Error)
+	assert.Equal(t, int64(2), giftLogs, "each account records exactly one gift entry")
 }
 
 func TestWelfarePointsDailyBucketResetsAndIsSpentFirst(t *testing.T) {

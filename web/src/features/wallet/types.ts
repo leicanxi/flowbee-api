@@ -231,6 +231,8 @@ export interface UserWalletData {
   aff_history_quota: number
   /** Number of successful affiliate invites */
   aff_count: number
+  /** Number of invited friends whose invite rewards have been issued */
+  aff_issued_count?: number
   /** User group */
   group: string
   /** Daily welfare points bucket (resets every day) */

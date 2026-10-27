@@ -255,7 +255,7 @@ describe('model cards', () => {
     expect(within(idle).getByText('—t/s')).toBeVisible()
   })
 
-  it('keeps group, endpoint and tag overflow counts with their own metadata', () => {
+  it('shows billing mode and group overflow in the card metadata', () => {
     const groups = ['default-with-a-long-group-name', 'premium', 'internal']
     const endpoints = ['openai-response', 'openai', 'claude', 'gemini', 'jina']
     const tags = [
@@ -278,38 +278,29 @@ describe('model cards', () => {
     )
 
     const groupField = screen.getByText('Groups').parentElement
-    const endpointField = screen.getByText('Endpoints').parentElement
-    if (!groupField || !endpointField) {
-      throw new Error('Expected labeled group and endpoint fields')
+    if (!groupField) {
+      throw new Error('Expected a labeled group field')
     }
-    const tagField = screen.getByRole('group', { name: 'Tags' })
+    expect(screen.getByText('Token-based')).toBeVisible()
     expect(within(groupField).getByText(groups[0])).toBeVisible()
     expect(within(groupField).getByText('+2')).toHaveAttribute(
       'title',
       groups.slice(1).join(', ')
     )
+    expect(screen.queryByText('Endpoints')).not.toBeInTheDocument()
     expect(
-      within(endpointField).getByText('openai-response, openai')
-    ).toHaveAttribute('title', endpoints.join(', '))
-    expect(within(endpointField).getByText('+3')).toBeVisible()
-    expect(
-      within(tagField).getByText('video-generation, high-resolution')
-    ).toHaveAttribute('title', tags.join(', '))
-    expect(within(tagField).getByText('+4')).toBeVisible()
-    expect(
-      within(screen.getByRole('group', { name: 'Pricing' })).getByText(
-        'Token-based'
-      )
-    ).toBeVisible()
+      screen.queryByRole('group', { name: 'Tags' })
+    ).not.toBeInTheDocument()
   })
 
-  it('omits metadata fields when the model has no groups, endpoints or tags', () => {
+  it('omits the group field when the model has no groups and never shows tags or endpoints', () => {
     render(
       <ModelCard
         model={pricingModel({ enable_groups: [] })}
         onClick={vi.fn()}
       />
     )
+    expect(screen.getByText('Token-based')).toBeVisible()
     expect(screen.queryByText('Groups')).not.toBeInTheDocument()
     expect(screen.queryByText('Endpoints')).not.toBeInTheDocument()
     expect(

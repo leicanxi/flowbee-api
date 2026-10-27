@@ -3,8 +3,10 @@ package model
 import (
 	"testing"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestSponsorshipBadges 锁定称号的判定契约：
@@ -92,4 +94,28 @@ func TestSponsorshipContinuousMinCountFallback(t *testing.T) {
 			assert.Equal(t, tc.want, setting.SponsorshipContinuousMinCount())
 		})
 	}
+}
+
+func TestGetUserSponsorshipStatsSplitsLifetimeAndMonthlyCounts(t *testing.T) {
+	truncateTables(t)
+	monthStart := sponsorshipMonthStart()
+
+	orders := []SponsorshipOrder{
+		{UserId: 1, TradeNo: "sponsor-1-current", Status: common.TopUpStatusSuccess, CompleteTime: monthStart + 100, Money: 1},
+		{UserId: 1, TradeNo: "sponsor-1-last", Status: common.TopUpStatusSuccess, CompleteTime: monthStart - 100, Money: 1},
+		{UserId: 1, TradeNo: "sponsor-1-pending", Status: common.TopUpStatusPending, CompleteTime: monthStart + 200, Money: 1},
+		{UserId: 2, TradeNo: "sponsor-2-current", Status: common.TopUpStatusSuccess, CompleteTime: monthStart + 300, Money: 1},
+		{UserId: 3, TradeNo: "sponsor-3-current", Status: common.TopUpStatusSuccess, CompleteTime: monthStart + 400, Money: 1},
+		{UserId: 2, TradeNo: "sponsor-2-last", Status: common.TopUpStatusSuccess, CompleteTime: monthStart - 200, Money: 1},
+	}
+	for i := range orders {
+		require.NoError(t, DB.Create(&orders[i]).Error)
+	}
+
+	stats, err := GetUserSponsorshipStats(1)
+	require.NoError(t, err)
+	assert.True(t, stats.Supported)
+	assert.Equal(t, int64(2), stats.SupportCount, "lifetime count includes last month")
+	assert.Equal(t, int64(1), stats.MonthlySupportCount, "own monthly count excludes last month and pending")
+	assert.Equal(t, int64(3), stats.MonthlySupporterCount, "site-wide monthly supporters are distinct users")
 }

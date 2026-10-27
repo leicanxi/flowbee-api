@@ -152,3 +152,59 @@ export async function getWelfarePointLogs(params: {
   }>('/api/user/welfare_points/logs', { params })
   return res.data
 }
+
+/**
+ * 免费分组里按模型聚合的积分消耗。
+ *
+ * `points_spent` 是「请求次数 × 单次积分价」，不是 token 数；后端已经按当前
+ * 的单次积分价算好，前端只拿它决定弹窗里条形图的相对长度，不展示具体数值。
+ */
+export interface WelfareModelUsageItem {
+  model_name: string
+  request_count: number
+  points_spent: number
+  last_used_at: number
+}
+
+export interface WelfareModelUsage {
+  group: string
+  /** 站点关闭了看板数据导出时，后端没有 quota_data，弹窗不能把空列表当成“没使用”。 */
+  data_available: boolean
+  models: WelfareModelUsageItem[]
+}
+
+export async function getWelfareModelUsage() {
+  const res = await api.get<{
+    success: boolean
+    message?: string
+    data?: WelfareModelUsage
+  }>('/api/user/welfare_points/model_usage')
+  return res.data
+}
+
+/** 积分配置（含各场景的发放面额，用于规则说明展示）。 */
+export interface WelfarePointsConfig {
+  enabled: boolean
+  group: string
+  daily: number
+  permanent: number
+  total: number
+  daily_base_points: number
+  new_user_points: number
+  model_costs: Record<string, number>
+  consume_tiers: { min_quota: number; points: number }[]
+  checkin_min_points: number
+  checkin_max_points: number
+  invitee_points: number
+  inviter_points: number
+  sponsor_points: number
+}
+
+export async function getWelfarePoints() {
+  const res = await api.get<{
+    success: boolean
+    message?: string
+    data?: WelfarePointsConfig
+  }>('/api/user/welfare_points')
+  return res.data
+}

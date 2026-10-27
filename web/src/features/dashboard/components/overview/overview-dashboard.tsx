@@ -21,15 +21,11 @@ import { Link } from '@tanstack/react-router'
 import {
   ArrowRight,
   ArrowUpRight,
-  Check,
-  ChevronDown,
-  ChevronUp,
   // Circle, // 引导步骤列表与旧请求卡片的动效一起停用，保留待后续 UI 参考
   Copy,
   CreditCard,
   KeyRound,
   Link2,
-  ListChecks,
   Sparkles,
   TerminalSquare,
   type LucideIcon,
@@ -68,23 +64,16 @@ import { AnnouncementsPanel } from './announcements-panel'
 import { ApiInfoPanel } from './api-info-panel'
 import { FAQPanel } from './faq-panel'
 import { PerformanceHealthPanel } from './performance-health-panel'
-import { StartAssets, StartAssetsReceipt } from './start-assets'
+import {
+  StartAssetsBalanceCard,
+  StartAssetsPointsCard,
+  StartAssetsReceipt,
+} from './start-assets'
 import { SummaryCards } from './summary-cards'
 import { UptimePanel } from './uptime-panel'
 
 const SETUP_GUIDE_VISIBILITY_STORAGE_KEY =
   'dashboard_overview_setup_guide_expanded'
-
-const SETUP_GUIDE_CODE_PATTERN = [
-  'const request = await client.responses.create({',
-  "  model: 'gpt-4.1-mini',",
-  "  input: 'Start routing traffic',",
-  '})',
-  '',
-  'if (request.output_text) {',
-  '  console.log(request.output_text)',
-  '}',
-].join('\n')
 
 type DashboardActionPath =
   | '/keys'
@@ -181,24 +170,6 @@ function buildDefaultKeyPayload(name: string): ApiKeyFormData {
     // 与密钥表单的默认值一致：允许客户端查询用户剩余额度。
     allow_user_quota_query: true,
   }
-}
-
-/*
- * 卡片只留一层极淡的代码纹理。原来那三层渐变（--overview-accent-1/2/3 的
- * 蓝/青/紫，加上底部压暗层）会和主题的强调色打架，看起来像两种强调色并排，
- * 已去掉，回到纯 bg-card。
- */
-function SetupGuideBackdrop() {
-  return (
-    <div
-      className='text-foreground/5 dark:text-foreground/8 pointer-events-none absolute inset-y-0 right-0 hidden w-[58%] overflow-hidden font-mono opacity-75 sm:block'
-      aria-hidden='true'
-    >
-      <pre className='absolute top-1 right-3 [mask-image:linear-gradient(90deg,transparent_0%,black_30%,black_82%,transparent_100%)] text-right text-[11px] leading-5 tracking-[0.38em] whitespace-pre'>
-        {SETUP_GUIDE_CODE_PATTERN}
-      </pre>
-    </div>
-  )
 }
 
 /*
@@ -676,82 +647,66 @@ export function OverviewDashboard() {
 
   return (
     <div className='flex flex-col gap-4'>
-      {/* 改造#42：标题与资产带在左卡，快速使用步骤单独一张右卡。收起时只收右卡，
-          左卡留住「我有什么额度」—— 那才是这个页面最常被看的两行数字。 */}
-      <CardStaggerContainer className='grid items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]'>
-        <CardStaggerItem className='bg-card h-full overflow-hidden rounded-2xl border shadow-xs'>
-          <div className='relative flex h-full flex-col'>
-            <SetupGuideBackdrop />
-            <div className='relative flex flex-col gap-1.5 px-5 pt-5 pb-4 sm:px-7 sm:pt-6'>
-              <div className='flex items-center justify-between gap-2.5'>
-                <div className='text-muted-foreground flex items-center gap-2 text-[10px] font-medium tracking-[0.12em] uppercase'>
-                  <ListChecks className='size-3.5' aria-hidden='true' />
-                  {t('Get started')}
-                </div>
-                <Button
-                  variant='outline'
-                  size='sm'
-                  ref={setupGuideToggleRef}
-                  aria-expanded={setupGuideExpanded}
-                  aria-controls={setupGuideId}
-                  className='border-primary/30 bg-primary/10 text-primary hover:bg-primary/15 h-6 shrink-0 rounded-full px-2.5 text-[11.5px] font-medium'
-                  onClick={handleSetupGuideToggle}
-                >
-                  {setupComplete ? (
-                    <Check
-                      data-icon='inline-start'
-                      className='text-success'
-                      aria-hidden='true'
-                    />
-                  ) : (
-                    <Sparkles data-icon='inline-start' aria-hidden='true' />
-                  )}
-                  {setupGuideExpanded ? t('Hide guide') : t('Quick start')}
-                  {setupGuideExpanded ? (
-                    <ChevronUp aria-hidden='true' />
-                  ) : (
-                    <ChevronDown aria-hidden='true' />
-                  )}
-                </Button>
-              </div>
-              <StartAssetsReceipt />
-            </div>
-
-            <div className='relative flex flex-1 flex-col px-5 pb-6 sm:px-7'>
-              <StartAssets user={user} models={modelsQuery.data ?? []} />
-            </div>
-          </div>
+      {/* 概览头部：左边深色收据卡，右边余额、积分与快速开始三张浅色卡。
+          收据卡把「过去 30 天省下多少」讲成一句话；右侧两张明细卡分别承接
+          充值、积分流水两个主动作，快速开始折叠时不占位。 */}
+      <CardStaggerContainer className='grid items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]'>
+        <CardStaggerItem className='overflow-hidden rounded-3xl border border-white/10 bg-[#262320] text-[#f8f4ee] shadow-xs dark:bg-[#1b1917]'>
+          <StartAssetsReceipt
+            user={user}
+            guideExpanded={setupGuideExpanded}
+            setupComplete={setupComplete}
+            guideControlsId={setupGuideId}
+            guideToggleRef={setupGuideToggleRef}
+            onToggleGuide={handleSetupGuideToggle}
+          />
         </CardStaggerItem>
 
-        {setupGuideExpanded && (
-          <CardStaggerItem className='bg-card h-full rounded-2xl border p-4 shadow-xs sm:p-5'>
-            <div id={setupGuideId} className='flex h-full flex-col gap-3'>
-              <div className='flex items-center justify-between gap-2'>
-                <div className='flex items-center gap-2 text-sm font-semibold'>
-                  <Sparkles
-                    className='text-primary size-4'
-                    aria-hidden='true'
-                  />
-                  {t('Quick start')}
-                </div>
-                <div className='flex items-center gap-2'>
-                  <span className='bg-muted h-1 w-16 overflow-hidden rounded-full'>
-                    <span
-                      className='bg-primary block h-full rounded-full transition-all'
-                      style={{
-                        width: `${(completedStepCount / startSteps.length) * 100}%`,
-                      }}
-                    />
-                  </span>
-                  <span className='text-muted-foreground font-mono text-[11px] tabular-nums'>
-                    {completedStepCount}/{startSteps.length}
-                  </span>
-                </div>
-              </div>
-              <SetupStepCards example={requestExample} />
-            </div>
+        <div className='relative flex min-w-0 flex-col gap-4'>
+          {/* 手机上先看到「开始使用 → 免费积分 → 余额」：积分是这个站点的主
+              资产，余额排在后面；桌面端两卡上下位置保持一致，快速开始仍然
+              以覆盖层占住这两张卡的位置。 */}
+          <CardStaggerItem>
+            <StartAssetsPointsCard user={user} />
           </CardStaggerItem>
-        )}
+
+          <CardStaggerItem className='flex-1'>
+            <StartAssetsBalanceCard user={user} />
+          </CardStaggerItem>
+
+          {/* 快速开始展开时覆盖在余额/积分两张卡之上，而不是插进列里把它们
+              挤下去：页面高度保持不变，收起后原来的卡还在原位。
+              `inset-0` 让覆盖层正好占住两张卡的范围；内容超出时在卡内滚动。 */}
+          {setupGuideExpanded && (
+            <CardStaggerItem className='bg-card absolute inset-0 z-10 flex flex-col overflow-y-auto rounded-2xl border p-4 shadow-lg sm:p-5'>
+              <div id={setupGuideId} className='flex flex-1 flex-col gap-3'>
+                <div className='flex items-center justify-between gap-2'>
+                  <div className='flex items-center gap-2 text-sm font-semibold'>
+                    <Sparkles
+                      className='text-primary size-4'
+                      aria-hidden='true'
+                    />
+                    {t('Quick start')}
+                  </div>
+                  <div className='flex items-center gap-2'>
+                    <span className='bg-muted h-1 w-16 overflow-hidden rounded-full'>
+                      <span
+                        className='bg-primary block h-full rounded-full transition-all'
+                        style={{
+                          width: `${(completedStepCount / startSteps.length) * 100}%`,
+                        }}
+                      />
+                    </span>
+                    <span className='text-muted-foreground font-mono text-[11px] tabular-nums'>
+                      {completedStepCount}/{startSteps.length}
+                    </span>
+                  </div>
+                </div>
+                <SetupStepCards example={requestExample} />
+              </div>
+            </CardStaggerItem>
+          )}
+        </div>
       </CardStaggerContainer>
 
       <SummaryCards />

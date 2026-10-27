@@ -36,6 +36,7 @@ const PAGE_SIZE = 20
 // 流水条目上的「这笔为什么来/走」。未知来源原样显示，宁可露出英文内部名，
 // 也不要吞掉一条真实账目。
 const SOURCE_LABELS: Record<string, string> = {
+  new_user: 'New user gift',
   checkin: 'Check-in',
   invitee: 'Invitee reward',
   inviter: 'Inviter reward',
