@@ -124,6 +124,7 @@ func GetStatus(c *gin.Context) {
 		"privacy_policy_enabled":      legalSetting.PrivacyPolicy != "",
 		"checkin_enabled":             operation_setting.GetCheckinSetting().Enabled,
 		"welfare_points_enabled":      setting.GetWelfarePointsEnabled(),
+		"welfare_promo_enabled":       cs.WelfarePromoEnabled,
 		"lottery_enabled":             operation_setting.GetLotterySetting().Enabled,
 		"lottery_start_time":          operation_setting.GetLotterySetting().StartTime,
 		"lottery_end_time":            operation_setting.GetLotterySetting().EndTime,
@@ -200,6 +201,10 @@ func GetAbout(c *gin.Context) {
 	about := common.OptionMap["About"]
 	common.OptionMapRWMutex.RUnlock()
 	serveRevalidatedJSON(c, about)
+}
+
+func GetWelfarePromo(c *gin.Context) {
+	serveRevalidatedJSON(c, console_setting.GetConsoleSetting().WelfarePromo)
 }
 
 func GetUserAgreement(c *gin.Context) {

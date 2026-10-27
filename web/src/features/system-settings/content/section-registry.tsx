@@ -25,6 +25,7 @@ import { DashboardSection } from './dashboard-section'
 import { DrawingSettingsSection } from './drawing-settings-section'
 import { FAQSection } from './faq-section'
 import { UptimeKumaSection } from './uptime-kuma-section'
+import { WelfarePromoSection } from './welfare-promo-section'
 
 /**
  * Validate and coerce DataExportDefaultTime to a safe value
@@ -80,6 +81,16 @@ const CONTENT_SECTIONS = [
       <FAQSection
         enabled={settings['console_setting.faq_enabled']}
         data={settings['console_setting.faq']}
+      />
+    ),
+  },
+  {
+    id: 'welfare-promo',
+    titleKey: 'Welfare promo',
+    build: (settings: ContentSettings) => (
+      <WelfarePromoSection
+        enabled={settings['console_setting.welfare_promo_enabled']}
+        data={settings['console_setting.welfare_promo']}
       />
     ),
   },

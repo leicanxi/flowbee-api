@@ -18,9 +18,12 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ChevronDown } from 'lucide-react'
 
 import { SectionPageLayout } from '@/components/layout'
+import { Button } from '@/components/ui/button'
 import { WelfarePointsCard } from '@/features/invite/components/welfare-points-card'
+import { WelfarePromoSection } from '@/features/invite/components/promo-section'
 import { LotteryDrawCard } from '@/features/lottery/components/lottery-draw-card'
 import { CheckinCalendarCard } from '@/features/profile/components/checkin-calendar-card'
 import { AffiliateRewardsCard } from '@/features/wallet/components/affiliate-rewards-card'
@@ -55,6 +58,28 @@ export function Invite() {
 
   const checkinEnabled = status?.checkin_enabled === true
   const welfarePointsEnabled = status?.welfare_points_enabled === true
+  // 运营推广区开关:内容整段由后台配置(HTML/MD),关闭或未配置时整块消失。
+  const welfarePromoEnabled = status?.welfare_promo_enabled === true
+  // 推广区没有自己的卡片壳,收起入口放在标题行;状态记住到 localStorage。
+  const [promoCollapsed, setPromoCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('welfare_promo_collapsed') === '1'
+    } catch {
+      return false
+    }
+  })
+
+  const togglePromoCollapsed = () => {
+    setPromoCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem('welfare_promo_collapsed', next ? '1' : '0')
+      } catch {
+        /* Storage may be disabled. */
+      }
+      return next
+    })
+  }
   // 改造#12：抽奖活动开关。活动起止时间也由服务端下发，
   // 但前端只做展示，真正的拦截在服务端 —— 否则直接调接口就能绕过时间限制。
   const lotteryEnabled = status?.lottery_enabled === true
@@ -91,8 +116,32 @@ export function Invite() {
   return (
     <SectionPageLayout>
       <SectionPageLayout.Title>{t('Welfare')}</SectionPageLayout.Title>
+      {welfarePromoEnabled && (
+        <SectionPageLayout.Actions>
+          <Button
+            variant='ghost'
+            size='icon-sm'
+            className='text-muted-foreground'
+            aria-label={promoCollapsed ? t('Expand') : t('Collapse')}
+            title={promoCollapsed ? t('Expand') : t('Collapse')}
+            onClick={togglePromoCollapsed}
+          >
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${
+                promoCollapsed ? '' : 'rotate-180'
+              }`}
+            />
+          </Button>
+        </SectionPageLayout.Actions>
+      )}
         <SectionPageLayout.Content>
-          <div className='mx-auto flex w-full max-w-7xl flex-col gap-4 sm:gap-5 lg:grid lg:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)] lg:items-start'>
+        <div className='mx-auto flex w-full max-w-7xl flex-col gap-4 sm:gap-5'>
+          {/* 运营推广区(后台可配置,最上方整条,无卡片壳) */}
+          <WelfarePromoSection
+            enabled={welfarePromoEnabled}
+            collapsed={promoCollapsed}
+          />
+          <div className='flex w-full flex-col gap-4 sm:gap-5 lg:grid lg:grid-cols-[minmax(0,1.06fr)_minmax(0,0.94fr)] lg:items-start'>
             {/* 左列 wrapper：档位摘要条 + 邀请（改造#9：摘要条上移）。桌面同列上下紧排
                 （间距与个人资料页卡片一致）；若把摘要条/邀请拆成两个独立 grid item，
                 右列签到卡(row-span)会把网格行拉高，导致卡片之间出现空隙。 */}
@@ -122,6 +171,7 @@ export function Invite() {
               </div>
             )}
           </div>
+        </div>
       </SectionPageLayout.Content>
     </SectionPageLayout>
   )

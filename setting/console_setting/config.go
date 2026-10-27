@@ -11,6 +11,8 @@ type ConsoleSetting struct {
 	UptimeKumaEnabled    bool   `json:"uptime_kuma_enabled"`   // 是否启用 Uptime Kuma 面板
 	AnnouncementsEnabled bool   `json:"announcements_enabled"` // 是否启用系统公告面板
 	FAQEnabled           bool   `json:"faq_enabled"`           // 是否启用常见问答面板
+	WelfarePromo         string `json:"welfare_promo"`         // 福利页推广区内容 (HTML/Markdown)
+	WelfarePromoEnabled  bool   `json:"welfare_promo_enabled"` // 是否启用福利页推广区
 }
 
 // 默认配置
@@ -23,6 +25,8 @@ var defaultConsoleSetting = ConsoleSetting{
 	UptimeKumaEnabled:    true,
 	AnnouncementsEnabled: true,
 	FAQEnabled:           true,
+	WelfarePromo:         "",
+	WelfarePromoEnabled:  false,
 }
 
 // 全局实例

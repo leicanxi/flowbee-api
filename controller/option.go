@@ -413,6 +413,12 @@ func UpdateOption(c *gin.Context) {
 			common.ApiError(c, err)
 			return
 		}
+	case "console_setting.welfare_promo":
+		err = console_setting.ValidateConsoleSettings(option.Value.(string), "WelfarePromo")
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
 	}
 	if model.IsPasskeyDomainOption(option.Key) {
 		change, updateErr := model.UpdatePasskeyDomainOptions(map[string]string{option.Key: option.Value.(string)}, false, "")

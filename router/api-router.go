@@ -35,6 +35,7 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/about", controller.GetAbout)
 		//apiRouter.GET("/midjourney", controller.GetMidjourney)
 		apiRouter.GET("/home_page_content", controller.GetHomePageContent)
+		apiRouter.GET("/welfare_promo", controller.GetWelfarePromo)
 		// 独立首页的公开统计（免费额度等），与 /sponsors 一样未登录可读。
 		apiRouter.GET("/site_stats", controller.GetSiteStats)
 		apiRouter.GET("/pricing", middleware.HeaderNavModuleAuth("pricing"), controller.GetPricing)

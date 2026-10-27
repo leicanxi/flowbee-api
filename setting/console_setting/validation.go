@@ -97,6 +97,8 @@ func ValidateConsoleSettings(settingsStr string, settingType string) error {
 		return validateAnnouncements(settingsStr)
 	case "FAQ":
 		return validateFAQ(settingsStr)
+	case "WelfarePromo":
+		return validateWelfarePromo(settingsStr)
 	case "UptimeKumaGroups":
 		return validateUptimeKumaGroups(settingsStr)
 	default:
@@ -243,6 +245,18 @@ func validateFAQ(faqStr string) error {
 		if exceedsMaxCharacters(answer, 1000) {
 			return common.NewMessage("FAQ #{{index}} answer cannot exceed 1000 characters", map[string]any{"index": i + 1})
 		}
+	}
+	return nil
+}
+
+// maxWelfarePromoCharacters caps the welfare promo HTML so the public
+// endpoint payload and the browser cache stay bounded. Rendering is sanitized
+// client-side by the shared HTML content component, so no tag filtering here.
+const maxWelfarePromoCharacters = 20000
+
+func validateWelfarePromo(content string) error {
+	if exceedsMaxCharacters(content, maxWelfarePromoCharacters) {
+		return common.NewMessage("Welfare promo content cannot exceed 20000 characters")
 	}
 	return nil
 }
