@@ -50,10 +50,12 @@ go.work.sum
 .dev-api.err.log
 .dev-api.log
 .dev-web.log
+web-dev*.log
 _dev_*.txt
 _shot_*.png
 _v2_*.png
 web/bin/
+上游合并核对清单-*.md
 
 # i18n sync 生成的报告
 web/src/i18n/locales/_reports/
