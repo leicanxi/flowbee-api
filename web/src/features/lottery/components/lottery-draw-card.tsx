@@ -22,8 +22,8 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { Captcha } from '@/components/captcha'
 import { Dialog } from '@/components/dialog'
-import { Turnstile } from '@/components/turnstile'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -480,7 +480,7 @@ export function LotteryDrawCard({
         bodyClassName='space-y-4'
       >
         <div className='flex justify-center py-2'>
-          <Turnstile
+          <Captcha
             key={turnstileWidgetKey}
             siteKey={turnstileSiteKey}
             onVerify={(token) => {

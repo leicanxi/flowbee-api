@@ -67,7 +67,7 @@ export async function login(payload: LoginPayload): Promise<LoginResponse> {
       passwordFields = { password: payload.password }
     }
     const res = await api.post<LoginResponse>(
-      `/api/user/login?turnstile=${turnstile}`,
+      `/api/user/login?turnstile=${encodeURIComponent(turnstile)}`,
       {
         username: payload.username,
         ...passwordFields,

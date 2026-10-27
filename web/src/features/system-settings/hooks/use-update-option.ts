@@ -49,6 +49,7 @@ const STATUS_RELATED_KEYS = new Set([
   'passkey.origins',
   'QuotaRemindEnabled',
   'QuotaRemindThreshold',
+  'AltchaCheckEnabled',
   'console_setting.welfare_promo_enabled',
 ])
 

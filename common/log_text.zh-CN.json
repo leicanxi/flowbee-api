@@ -464,6 +464,7 @@
   "failed to configure trusted proxies: %s": "设置可信代理失败: %s",
   "failed to copy file content: %s": "复制文件内容失败: %s",
   "failed to copy response body: %s": "复制响应体失败: %s",
+  "failed to create ALTCHA challenge: %s": "生成 ALTCHA 验证挑战失败: %s",
   "failed to count backup codes: %s": "获取备用码数量失败: %s",
   "failed to count channel types: %s": "统计渠道类型失败: %s",
   "failed to count channels: %s": "统计渠道数量失败: %s",

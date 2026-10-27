@@ -29,9 +29,9 @@ export function useTurnstile() {
   const { status } = useStatus()
   const [turnstileToken, setTurnstileToken] = useState('')
 
-  const isTurnstileEnabled = !!(
-    status?.turnstile_check && status?.turnstile_site_key
-  )
+  const altchaEnabled = status?.altcha_check === true
+  const isTurnstileEnabled =
+    altchaEnabled || !!(status?.turnstile_check && status?.turnstile_site_key)
   const turnstileSiteKey = status?.turnstile_site_key || ''
 
   /**

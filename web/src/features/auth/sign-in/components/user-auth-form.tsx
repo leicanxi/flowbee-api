@@ -25,9 +25,9 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { z } from 'zod'
 
+import { Captcha } from '@/components/captcha'
 import { Dialog } from '@/components/dialog'
 import { PasswordInput } from '@/components/password-input'
-import { Turnstile } from '@/components/turnstile'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -405,10 +405,10 @@ export function UserAuthForm({
               {t('Sign in')}
             </Button>
 
-            {/* Turnstile */}
+            {/* Human check */}
             {isTurnstileEnabled && (
               <div className='mt-2'>
-                <Turnstile
+                <Captcha
                   key={turnstileWidgetKey}
                   siteKey={turnstileSiteKey}
                   onVerify={setTurnstileToken}

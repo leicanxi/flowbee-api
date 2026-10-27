@@ -29,8 +29,8 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { Captcha } from '@/components/captcha'
 import { Dialog } from '@/components/dialog'
-import { Turnstile } from '@/components/turnstile'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { IconBadge } from '@/components/ui/icon-badge'
@@ -51,12 +51,14 @@ import type { CheckinRecord } from '../types'
 
 interface CheckinCalendarCardProps {
   checkinEnabled: boolean
+  altchaEnabled: boolean
   turnstileEnabled: boolean
   turnstileSiteKey: string
 }
 
 export function CheckinCalendarCard({
   checkinEnabled,
+  altchaEnabled,
   turnstileEnabled,
   turnstileSiteKey,
 }: CheckinCalendarCardProps) {
@@ -130,11 +132,11 @@ export function CheckinCalendarCard({
     setInitialLoaded(true)
   }, [checkinData, checkedToday, initialLoaded, isLoading])
 
-  const shouldTriggerTurnstile = useCallback(
+  const shouldTriggerCaptcha = useCallback(
     (message?: string) => {
       if (!turnstileEnabled) return false
       if (typeof message !== 'string') return true
-      return message.includes('Turnstile')
+      return message.includes('Turnstile') || message.includes('ALTCHA')
     },
     [turnstileEnabled]
   )
@@ -151,15 +153,15 @@ export function CheckinCalendarCard({
           refetch()
           setTurnstileModalVisible(false)
         } else {
-          if (!token && shouldTriggerTurnstile(res.message)) {
-            if (!turnstileSiteKey) {
+          if (!token && shouldTriggerCaptcha(res.message)) {
+            if (!altchaEnabled && !turnstileSiteKey) {
               toast.error(t('Turnstile is enabled but site key is empty.'))
               return
             }
             setTurnstileModalVisible(true)
             return
           }
-          if (token && shouldTriggerTurnstile(res.message)) {
+          if (token && shouldTriggerCaptcha(res.message)) {
             setTurnstileWidgetKey((v) => v + 1)
           }
           handleServerError(res, t('Check-in failed'))
@@ -170,7 +172,7 @@ export function CheckinCalendarCard({
         setCheckinLoading(false)
       }
     },
-    [refetch, shouldTriggerTurnstile, t, turnstileSiteKey]
+    [altchaEnabled, refetch, shouldTriggerCaptcha, t, turnstileSiteKey]
   )
 
   const handlePrevMonth = () => {
@@ -269,7 +271,7 @@ export function CheckinCalendarCard({
           {t('Please complete the security check to continue.')}
         </div>
         <div className='flex justify-center py-4'>
-          <Turnstile
+          <Captcha
             key={turnstileWidgetKey}
             siteKey={turnstileSiteKey}
             onVerify={(token) => {

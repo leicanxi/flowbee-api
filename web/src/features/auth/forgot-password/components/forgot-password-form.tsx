@@ -24,7 +24,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { z } from 'zod'
 
-import { Turnstile } from '@/components/turnstile'
+import { Captcha } from '@/components/captcha'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -131,10 +131,7 @@ export function ForgotPasswordForm({
 
         {isTurnstileEnabled && (
           <div className='mt-2'>
-            <Turnstile
-              siteKey={turnstileSiteKey}
-              onVerify={setTurnstileToken}
-            />
+            <Captcha siteKey={turnstileSiteKey} onVerify={setTurnstileToken} />
           </div>
         )}
       </form>
