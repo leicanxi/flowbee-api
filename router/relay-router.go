@@ -68,6 +68,8 @@ func SetRelayRouter(router *gin.Engine) {
 	{
 		playgroundRouter.POST("/chat/completions", controller.Playground)
 		playgroundRouter.POST("/images/generations", controller.PlaygroundImage)
+		// 参考图改图：浏览器以 multipart 上传，网关转发给上游 /v1/images/edits。
+		playgroundRouter.POST("/images/edits", controller.PlaygroundImage)
 	}
 	relayV1Router := router.Group("/v1")
 	relayV1Router.Use(middleware.RouteTag("relay"))

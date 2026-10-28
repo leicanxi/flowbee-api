@@ -28,6 +28,11 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/status", controller.GetStatus)
 		apiRouter.GET("/uptime/status", controller.GetUptimeKumaStatus)
 		apiRouter.GET("/models", middleware.UserAuth(), controller.DashboardListModels)
+		// 生图工作室的提示词广场：登录用户可读，封面走同源白名单代理。
+		apiRouter.GET("/prompts", middleware.UserAuth(), controller.GetImagePrompts)
+		apiRouter.GET("/prompts/cover", middleware.UserAuth(), controller.GetImagePromptCover)
+		// 生图模型能力表：决定前端给每个模型开放哪些分辨率选项。
+		apiRouter.GET("/image-model-caps", middleware.UserAuth(), controller.GetImageModelCaps)
 		apiRouter.GET("/status/test", middleware.AdminAuth(), controller.TestStatus)
 		apiRouter.GET("/notice", controller.GetNotice)
 		apiRouter.GET("/user-agreement", controller.GetUserAgreement)

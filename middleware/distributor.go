@@ -446,7 +446,10 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 			modelRequest.Model = modelName
 		}
 		c.Set("relay_mode", relayMode)
-	} else if !strings.HasPrefix(c.Request.URL.Path, "/v1/audio/transcriptions") && !strings.Contains(c.Request.Header.Get("Content-Type"), "multipart/form-data") {
+	} else if !strings.HasPrefix(c.Request.URL.Path, "/v1/audio/transcriptions") &&
+		// 多模态表单（如 /pg/images/edits 的参考图）在游乐场路径下没有任务插件
+		// 中间件预解析模型，这里直接从 multipart 字段读取，否则无法选渠道。
+		(!strings.Contains(c.Request.Header.Get("Content-Type"), "multipart/form-data") || strings.HasPrefix(c.Request.URL.Path, "/pg/")) {
 		req, err := getModelFromRequest(c)
 		if err != nil {
 			return nil, false, err

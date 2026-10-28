@@ -321,6 +321,16 @@ func UpdateOption(c *gin.Context) {
 			common.ApiError(c, err)
 			return
 		}
+	case setting.ImageModelCapsOptionKey:
+		// 这张表前端直接消费，写坏了生图页的分辨率选项就会错，所以写入前先校验。
+		err = setting.ValidateImageModelCaps(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "生图模型能力表未保存: " + err.Error(),
+			})
+			return
+		}
 	case "WelfarePointsSetting":
 		err = setting.CheckWelfarePointsSetting(option.Value.(string))
 		if err != nil {
