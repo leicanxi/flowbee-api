@@ -366,6 +366,8 @@ export type BillingSettings = {
   // 不经过 QuotaPerUnit 换算 —— 支持是纯支出，不产生额度。
   'sponsorship_setting.enabled': boolean
   'sponsorship_setting.title': string
+  'sponsorship_setting.business_contact': string
+  'sponsorship_setting.partners': string
   'sponsorship_setting.goal_enabled': boolean
   'sponsorship_setting.goal_name': string
   'sponsorship_setting.goal_target_money': number
@@ -379,6 +381,8 @@ export type BillingSettings = {
   'sponsorship_setting.early_supporter_deadline': number
   'sponsorship_setting.continuous_window_months': number
   'sponsorship_setting.continuous_min_count': number
+  'sponsorship_setting.major_supporter_min_money': number
+  'sponsorship_setting.cumulative_supporter_min_money': number
   // 改造#12：生日抽奖（奖池以 JSON 字符串形式配置）
   'lottery_setting.enabled': boolean
   'lottery_setting.start_time': number

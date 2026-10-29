@@ -43,15 +43,24 @@ type SponsorshipTierOption struct {
 	Custom  bool    `json:"custom"`
 }
 
+// SponsorshipPartnerOption 前端渲染一个合作位所需的字段。
+type SponsorshipPartnerOption struct {
+	Name string `json:"name"`
+	Url  string `json:"url"`
+	Note string `json:"note"`
+}
+
 type SponsorshipInfoResponse struct {
-	Enabled          bool                    `json:"enabled"`
-	Title            string                  `json:"title"`
-	Options          []SponsorshipTierOption `json:"options"`
-	CustomMinMoney   float64                 `json:"custom_min_money"`
-	CustomMaxMoney   float64                 `json:"custom_max_money"`
-	MaxMessageLength int                     `json:"max_message_length"`
-	DefaultMessage   string                  `json:"default_message"`
-	Sponsors         []model.SponsorEntry    `json:"sponsors"`
+	Enabled          bool                       `json:"enabled"`
+	Title            string                     `json:"title"`
+	BusinessContact  string                     `json:"business_contact"`
+	Options          []SponsorshipTierOption    `json:"options"`
+	Partners         []SponsorshipPartnerOption `json:"partners"`
+	CustomMinMoney   float64                    `json:"custom_min_money"`
+	CustomMaxMoney   float64                    `json:"custom_max_money"`
+	MaxMessageLength int                        `json:"max_message_length"`
+	DefaultMessage   string                     `json:"default_message"`
+	Sponsors         []model.SponsorEntry       `json:"sponsors"`
 	// Goal 为本月筹集进度，未配置目标时为 null。
 	Goal *model.SponsorshipGoal `json:"goal"`
 }
@@ -89,6 +98,35 @@ func buildSponsorshipOptions(setting *operation_setting.SponsorshipSetting) []Sp
 	return options
 }
 
+// buildSponsorshipPartners 过滤出可以公开展示的合作位。
+//
+// 名称、链接缺一不可；链接只放行 http(s) 且必须带主机名 —— 后台误填
+// javascript: 之类的地址时，它不会成为公开页上的 href。顺序保持配置顺序，
+// 不按金额或点击排序。
+func buildSponsorshipPartners(setting *operation_setting.SponsorshipSetting) []SponsorshipPartnerOption {
+	partners := make([]SponsorshipPartnerOption, 0, len(setting.Partners))
+	for _, partner := range setting.Partners {
+		name := strings.TrimSpace(partner.Name)
+		rawUrl := strings.TrimSpace(partner.Url)
+		if name == "" || rawUrl == "" {
+			continue
+		}
+		parsed, err := url.Parse(rawUrl)
+		if err != nil || parsed.Host == "" {
+			continue
+		}
+		if parsed.Scheme != "http" && parsed.Scheme != "https" {
+			continue
+		}
+		partners = append(partners, SponsorshipPartnerOption{
+			Name: name,
+			Url:  rawUrl,
+			Note: strings.TrimSpace(partner.Note),
+		})
+	}
+	return partners
+}
+
 // GetSponsors 公开的支持页数据：选项配置 + 支持者名单。
 //
 // 不需要登录：名单要让访客和潜在支持者看到才有意义，
@@ -122,7 +160,9 @@ func GetSponsors(c *gin.Context) {
 		"data": SponsorshipInfoResponse{
 			Enabled:          true,
 			Title:            setting.Title,
+			BusinessContact:  setting.BusinessContact,
 			Options:          buildSponsorshipOptions(setting),
+			Partners:         buildSponsorshipPartners(setting),
 			CustomMinMoney:   minMoney,
 			CustomMaxMoney:   maxMoney,
 			MaxMessageLength: setting.SponsorshipMaxMessageLength(),

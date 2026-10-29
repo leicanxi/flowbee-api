@@ -244,6 +244,8 @@ const BILLING_SECTIONS = [
         defaultValues={{
           enabled: settings['sponsorship_setting.enabled'],
           title: settings['sponsorship_setting.title'],
+          businessContact: settings['sponsorship_setting.business_contact'],
+          partners: settings['sponsorship_setting.partners'],
           goalEnabled: settings['sponsorship_setting.goal_enabled'],
           goalName: settings['sponsorship_setting.goal_name'],
           goalTargetMoney: settings['sponsorship_setting.goal_target_money'],
@@ -259,6 +261,10 @@ const BILLING_SECTIONS = [
             settings['sponsorship_setting.continuous_window_months'],
           continuousMinCount:
             settings['sponsorship_setting.continuous_min_count'],
+          majorSupporterMinMoney:
+            settings['sponsorship_setting.major_supporter_min_money'],
+          cumulativeSupporterMinMoney:
+            settings['sponsorship_setting.cumulative_supporter_min_money'],
         }}
       />
     ),

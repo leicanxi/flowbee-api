@@ -28,6 +28,8 @@ const (
 const (
 	SponsorshipBadgeEarlySupporter      = "early_supporter"
 	SponsorshipBadgeContinuousSupporter = "continuous_supporter"
+	SponsorshipBadgeMajorSupporter      = "major_supporter"
+	SponsorshipBadgeCumulativeSupporter = "cumulative_supporter"
 )
 
 var (
@@ -221,6 +223,8 @@ type sponsorshipAggregate struct {
 	FirstTime    int64
 	LastTime     int64
 	SupportCount int64
+	MaxMoney     float64
+	TotalMoney   float64
 }
 
 type sponsorshipWindowCount struct {
@@ -242,18 +246,27 @@ func SponsorshipContinuousCutoff() int64 {
 	return time.Now().AddDate(0, -months, 0).Unix()
 }
 
-// sponsorshipBadges 按用户的首次支持时间与窗口内支持次数算出称号。
+// sponsorshipBadges 按用户的首次支持时间、窗口内次数与金额算出称号。
 //
-// 两个称号都必须有区分度，"支持过"本身不发称号 —— 出现在名单里
+// 所有称号都必须有区分度，"支持过"本身不发称号 —— 出现在名单里
 // 就已经是证明，人人都有等于没有。
-func sponsorshipBadges(firstTime int64, windowCount int64) []string {
+//
+// 金额称号只看门槛不看名次：名次会随后来者变动，已经到手的称号
+// 不该被别人挤掉。公开接口仍然不下发金额，只下发称号 id。
+func sponsorshipBadges(firstTime int64, windowCount int64, maxMoney float64, totalMoney float64) []string {
 	s := operation_setting.GetSponsorshipSetting()
-	badges := make([]string, 0, 2)
+	badges := make([]string, 0, 4)
 	if s.EarlySupporterDeadline > 0 && firstTime > 0 && firstTime <= s.EarlySupporterDeadline {
 		badges = append(badges, SponsorshipBadgeEarlySupporter)
 	}
 	if windowCount >= int64(s.SponsorshipContinuousMinCount()) {
 		badges = append(badges, SponsorshipBadgeContinuousSupporter)
+	}
+	if s.MajorSupporterMinMoney > 0 && maxMoney >= s.MajorSupporterMinMoney {
+		badges = append(badges, SponsorshipBadgeMajorSupporter)
+	}
+	if s.CumulativeSupporterMinMoney > 0 && totalMoney >= s.CumulativeSupporterMinMoney {
+		badges = append(badges, SponsorshipBadgeCumulativeSupporter)
 	}
 	return badges
 }
@@ -313,7 +326,7 @@ func ListSponsors(limit int) ([]SponsorEntry, error) {
 
 	var aggregates []sponsorshipAggregate
 	if err := DB.Model(&SponsorshipOrder{}).
-		Select("user_id, MIN(complete_time) AS first_time, MAX(complete_time) AS last_time, COUNT(*) AS support_count").
+		Select("user_id, MIN(complete_time) AS first_time, MAX(complete_time) AS last_time, COUNT(*) AS support_count, COALESCE(MAX(money), 0) AS max_money, COALESCE(SUM(money), 0) AS total_money").
 		Where("status = ?", common.TopUpStatusSuccess).
 		Group("user_id").
 		Order("last_time DESC").
@@ -372,7 +385,7 @@ func ListSponsors(limit int) ([]SponsorEntry, error) {
 	for _, a := range aggregates {
 		entry := SponsorEntry{
 			LastTime: a.LastTime,
-			Badges:   sponsorshipBadges(a.FirstTime, windowByUser[a.UserId]),
+			Badges:   sponsorshipBadges(a.FirstTime, windowByUser[a.UserId], a.MaxMoney, a.TotalMoney),
 		}
 		user, ok := users[a.UserId]
 		// 已注销或已封禁的账号按匿名处理，不再公开其身份。
@@ -417,8 +430,12 @@ type SponsorshipGoal struct {
 	RaisedMoney    float64 `json:"raised_money"`
 	SupporterCount int64   `json:"supporter_count"`
 	SupportCount   int64   `json:"support_count"`
-	PeriodStart    int64   `json:"period_start"`
-	Achieved       bool    `json:"achieved"`
+	// TotalSupporterCount 是建站以来支持过的去重人数，不随月份归零。
+	// 进度条只用本月口径，但只在墙上看得到最近 60 位；没有这个数，
+	// 更早的支持者会看起来像从来没出现过。
+	TotalSupporterCount int64 `json:"total_supporter_count"`
+	PeriodStart         int64 `json:"period_start"`
+	Achieved            bool  `json:"achieved"`
 }
 
 // sponsorshipMonthStart 返回本地时区本月 1 号 0 点的时间戳。
@@ -457,14 +474,23 @@ func GetSponsorshipGoal() (*SponsorshipGoal, error) {
 		return nil, err
 	}
 
+	var totalSupporterCount int64
+	if err := DB.Model(&SponsorshipOrder{}).
+		Where("status = ?", common.TopUpStatusSuccess).
+		Distinct("user_id").
+		Count(&totalSupporterCount).Error; err != nil {
+		return nil, err
+	}
+
 	return &SponsorshipGoal{
-		Name:           setting.SponsorshipGoalName(),
-		TargetMoney:    target,
-		RaisedMoney:    aggregate.RaisedMoney,
-		SupporterCount: aggregate.SupporterCount,
-		SupportCount:   aggregate.SupportCount,
-		PeriodStart:    periodStart,
-		Achieved:       aggregate.RaisedMoney >= target,
+		Name:                setting.SponsorshipGoalName(),
+		TargetMoney:         target,
+		RaisedMoney:         aggregate.RaisedMoney,
+		SupporterCount:      aggregate.SupporterCount,
+		SupportCount:        aggregate.SupportCount,
+		TotalSupporterCount: totalSupporterCount,
+		PeriodStart:         periodStart,
+		Achieved:            aggregate.RaisedMoney >= target,
 	}, nil
 }
 
@@ -479,9 +505,11 @@ func GetUserSponsorshipStats(userId int) (*UserSponsorshipStats, error) {
 		FirstTime    int64
 		LastTime     int64
 		SupportCount int64
+		MaxMoney     float64
+		TotalMoney   float64
 	}
 	if err := DB.Model(&SponsorshipOrder{}).
-		Select("COALESCE(MIN(complete_time), 0) AS first_time, COALESCE(MAX(complete_time), 0) AS last_time, COUNT(*) AS support_count").
+		Select("COALESCE(MIN(complete_time), 0) AS first_time, COALESCE(MAX(complete_time), 0) AS last_time, COUNT(*) AS support_count, COALESCE(MAX(money), 0) AS max_money, COALESCE(SUM(money), 0) AS total_money").
 		Where("status = ? AND user_id = ?", common.TopUpStatusSuccess, userId).
 		Scan(&aggregate).Error; err != nil {
 		return nil, err
@@ -511,7 +539,7 @@ func GetUserSponsorshipStats(userId int) (*UserSponsorshipStats, error) {
 		Count(&windowCount).Error; err != nil {
 		return nil, err
 	}
-	stats.Badges = sponsorshipBadges(aggregate.FirstTime, windowCount)
+	stats.Badges = sponsorshipBadges(aggregate.FirstTime, windowCount, aggregate.MaxMoney, aggregate.TotalMoney)
 
 	var latest SponsorshipOrder
 	err = DB.Where("status = ? AND user_id = ?", common.TopUpStatusSuccess, userId).

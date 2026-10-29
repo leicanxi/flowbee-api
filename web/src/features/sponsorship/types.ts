@@ -20,6 +20,8 @@ For commercial licensing, please contact support@quantumnous.com
 /** 称号 id，与后端 model 层常量一一对应。 */
 export const SPONSOR_BADGE_EARLY = 'early_supporter'
 export const SPONSOR_BADGE_CONTINUOUS = 'continuous_supporter'
+export const SPONSOR_BADGE_MAJOR = 'major_supporter'
+export const SPONSOR_BADGE_CUMULATIVE = 'cumulative_supporter'
 
 export const SPONSOR_CUSTOM_TIER_ID = 'custom'
 
@@ -50,6 +52,13 @@ export interface SponsorshipTierOption {
   custom: boolean
 }
 
+/** 页面底部的合作位，与支持者名单分开。 */
+export interface SponsorshipPartner {
+  name: string
+  url: string
+  note: string
+}
+
 /** 本月筹集进度。按自然月统计，月初归零。 */
 export interface SponsorshipGoal {
   name: string
@@ -57,6 +66,8 @@ export interface SponsorshipGoal {
   raised_money: number
   supporter_count: number
   support_count: number
+  /** 建站以来支持过的去重人数，不随月份归零。 */
+  total_supporter_count: number
   period_start: number
   achieved: boolean
 }
@@ -64,7 +75,11 @@ export interface SponsorshipGoal {
 export interface SponsorshipInfo {
   enabled: boolean
   title: string
+  /** 页面底部展示的联系方式（邮箱或链接），空字符串表示不展示。 */
+  business_contact: string
   options: SponsorshipTierOption[]
+  /** 合作位，按配置顺序展示；不足三个时前端补空位。 */
+  partners: SponsorshipPartner[]
   custom_min_money: number
   custom_max_money: number
   max_message_length: number
