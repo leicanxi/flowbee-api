@@ -67,7 +67,7 @@ export function WelfarePointsCard({
       </p>
       <p className='text-muted-foreground mt-1 text-xs leading-relaxed'>
         {t(
-          'Earn points from the daily base grant, check-in, invites, yesterday wallet spend and sponsorship.'
+          'Earn points from the daily base grant, the new-user gift, check-in, invites, yesterday wallet spend and sponsorship.'
         )}
       </p>
     </div>

@@ -253,6 +253,34 @@ func UpdateOption(c *gin.Context) {
 			common.ApiErrorT(c, "Cannot enable Turnstile verification. Enter the Turnstile settings first.")
 			return
 		}
+		if option.Value == "true" && common.AltchaCheckEnabled {
+			common.ApiErrorT(c, "Disable ALTCHA verification before enabling Turnstile.")
+			return
+		}
+	case "AltchaCheckEnabled":
+		if option.Value == "true" && common.AltchaHmacKey == "" {
+			common.ApiErrorT(c, "Cannot enable ALTCHA verification. Enter the HMAC key first.")
+			return
+		}
+		if option.Value == "true" && common.TurnstileCheckEnabled {
+			common.ApiErrorT(c, "Disable Turnstile verification before enabling ALTCHA.")
+			return
+		}
+	case "AltchaHmacKey":
+		if option.Value == "" && common.AltchaCheckEnabled {
+			common.ApiErrorT(c, "Cannot remove the ALTCHA HMAC key while ALTCHA verification is enabled.")
+			return
+		}
+		if option.Value != "" && len(option.Value.(string)) < 16 {
+			common.ApiErrorT(c, "ALTCHA HMAC key must be at least 16 characters.")
+			return
+		}
+	case "AltchaMaxNumber":
+		maxNumber, err := strconv.Atoi(option.Value.(string))
+		if err != nil || maxNumber < 10000 || maxNumber > 5000000 {
+			common.ApiErrorT(c, "ALTCHA max number must be between {{min}} and {{max}}.", map[string]any{"min": 10000, "max": 5000000})
+			return
+		}
 	case "TelegramOAuthEnabled":
 		if option.Value == "true" && !system_setting.GetTelegramSettings().IsConfigured() {
 			c.JSON(http.StatusOK, gin.H{

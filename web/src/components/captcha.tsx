@@ -18,6 +18,10 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useEffect, useRef } from 'react'
 
+import { useStatus } from '@/hooks/use-status'
+
+import { Altcha } from './altcha'
+
 declare global {
   interface Window {
     turnstile?: {
@@ -26,19 +30,47 @@ declare global {
   }
 }
 
-interface TurnstileProps {
+interface CaptchaProps {
   siteKey: string
   onVerify: (token: string) => void
   onExpire?: () => void
   className?: string
 }
 
-export function Turnstile({
+/**
+ * Bot-protection widget. The backend enforces one provider at a time; the
+ * status payload decides which widget the user actually sees.
+ */
+export function Captcha({
   siteKey,
   onVerify,
   onExpire,
   className,
-}: TurnstileProps) {
+}: CaptchaProps) {
+  const { status } = useStatus()
+
+  if (status?.altcha_check) {
+    return (
+      <Altcha onVerify={onVerify} onExpire={onExpire} className={className} />
+    )
+  }
+
+  return (
+    <TurnstileWidget
+      siteKey={siteKey}
+      onVerify={onVerify}
+      onExpire={onExpire}
+      className={className}
+    />
+  )
+}
+
+function TurnstileWidget({
+  siteKey,
+  onVerify,
+  onExpire,
+  className,
+}: CaptchaProps) {
   const ref = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {

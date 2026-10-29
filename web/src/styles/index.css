@@ -30,22 +30,6 @@ For commercial licensing, please contact support@quantumnous.com
 @import './theme.css';
 @import './theme-presets.css';
 
-/* 改造#44：概览「开始使用」卡片的大数字用手写体（LXGW WenKai Lite Bold）。
- *
- * 完整发行版 26MB / 595 个分片，为了十来个数字去拉一整套是不可接受的。
- * 这里只保留卡片真正会渲染的 16 个字形（0-9 . , ¥ $），合并后 1992 字节，
- * 内联进构建产物、不依赖外部 CDN —— 换字体只需要替换这一个文件。
- * 只用于数字，所以配 `unicode-range` 兜底：万一哪天有人把中文塞进这个
- * class，会自然回退到正文字体，而不是渲染成一堆豆腐块。 */
-@font-face {
-  font-family: 'WenKai Digits';
-  src: url('../assets/fonts/wenkai-bold-digits.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-  unicode-range: U+0024-0025, U+002C, U+002E, U+0030-0039, U+00A5;
-}
-
 @layer base {
   :root {
     /* Mobile browser toolbars change dvh; 50% positioning and vh still use
@@ -220,34 +204,6 @@ For commercial licensing, please contact support@quantumnous.com
   /* Hide scrollbar for IE, Edge and Firefox */
   -ms-overflow-style: none; /* IE and Edge */
   scrollbar-width: none; /* Firefox */
-}
-
-/* 改造#44：概览左卡的金额/积分大数字。
- * 只有数字走手写体子集，单位、符号旁边的小字仍是正文字体；中文绝不进这个
- * class（子集里没有中文字形，虽然有 unicode-range 会回退，但那是兜底不是用法）。
- * `font-synthesis: none` 防止某些浏览器在 700 之外再合成加粗，笔锋会糊。 */
-@utility kai-figure {
-  font-family:
-    'WenKai Digits', var(--font-body, ui-sans-serif), system-ui, sans-serif;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  font-synthesis: none;
-  letter-spacing: -0.01em;
-}
-
-/* 卡片两栏：默认竖排，容器够宽才并排。
- *
- * 用容器查询而不是视口断点：这张卡在概览页可能被塞进不同宽度的栅格
- * （移动端全宽、桌面端半宽）。按视口断点会出现「桌面很宽、但卡片只分到
- * 500px」却仍然并排、两栏被挤爆的情况。容器边界由根节点上的 `@container`
- * 提供，这里只管列模板。 */
-@utility start-assets-panes {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-
-  @container (min-width: 560px) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
 }
 
 /* Tooltip content can still scroll, but should not show a distracting axis. */

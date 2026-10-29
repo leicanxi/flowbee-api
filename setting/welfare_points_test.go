@@ -54,6 +54,14 @@ func TestWelfareConsumeTierPointsUsesHighestReachedTier(t *testing.T) {
 	assert.Equal(t, 10, GetWelfareConsumeTierPoints(2500000))
 }
 
+func TestWelfareNewUserPointsRespectsEnabled(t *testing.T) {
+	useWelfarePointsSetting(t, `{"enabled":true,"new_user_points":12,"model_costs":{"default":1}}`)
+	assert.Equal(t, 12, GetWelfareNewUserPoints())
+
+	useWelfarePointsSetting(t, `{"enabled":false,"new_user_points":12,"model_costs":{"default":1}}`)
+	assert.Equal(t, 0, GetWelfareNewUserPoints(), "a disabled economy must not grant")
+}
+
 func TestCheckWelfarePointsSettingRejectsInvalidValues(t *testing.T) {
 	cases := []struct {
 		name string
@@ -63,6 +71,7 @@ func TestCheckWelfarePointsSettingRejectsInvalidValues(t *testing.T) {
 		{"negative model cost", `{"enabled":false,"model_costs":{"default":-1}}`},
 		{"duplicate consume tier", `{"consume_tiers":[{"min_quota":0,"points":1},{"min_quota":0,"points":2}]}`},
 		{"negative daily base", `{"daily_base_points":-1}`},
+		{"negative new user points", `{"new_user_points":-1}`},
 		{"checkin max below min", `{"checkin_min_points":10,"checkin_max_points":5}`},
 	}
 

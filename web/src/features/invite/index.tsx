@@ -83,9 +83,9 @@ export function Invite() {
   // 改造#12：抽奖活动开关。活动起止时间也由服务端下发，
   // 但前端只做展示，真正的拦截在服务端 —— 否则直接调接口就能绕过时间限制。
   const lotteryEnabled = status?.lottery_enabled === true
-  const turnstileEnabled = !!(
-    status?.turnstile_check && status?.turnstile_site_key
-  )
+  const altchaEnabled = status?.altcha_check === true
+  const turnstileEnabled =
+    altchaEnabled || !!(status?.turnstile_check && status?.turnstile_site_key)
   const turnstileSiteKey = status?.turnstile_site_key || ''
 
   const fetchUser = useCallback(async () => {
@@ -164,6 +164,7 @@ export function Invite() {
                 {checkinEnabled && (
                   <CheckinCalendarCard
                     checkinEnabled={checkinEnabled}
+                    altchaEnabled={altchaEnabled}
                     turnstileEnabled={turnstileEnabled}
                     turnstileSiteKey={turnstileSiteKey}
                   />

@@ -90,10 +90,10 @@ export const ModelPerfBadge = memo(function ModelPerfBadge(
             title={t(
               'Success rate excludes business rejections and includes the current partial hour.'
             )}
-            className='text-muted-foreground flex items-center justify-between gap-1 text-[11px] leading-4'
+            className='text-muted-foreground flex items-center justify-between gap-1 text-[10px] leading-4'
           >
-            <span>{t('Status')}</span>
-            <span className='font-mono'>
+            <span className='text-muted-foreground/55'>{t('Status')}</span>
+            <span className='text-muted-foreground/80 font-mono text-xs leading-4 whitespace-nowrap'>
               {hasSuccessRate ? `${successRate.toFixed(2)}%` : '—'}
             </span>
           </dt>
@@ -115,23 +115,23 @@ export const ModelPerfBadge = memo(function ModelPerfBadge(
                 />
               ))
             ) : (
-              <span className='text-muted-foreground'>—</span>
+              <span className='text-muted-foreground/80'>—</span>
             )}
           </dd>
         </div>
         <div title={t('Average latency')} className='shrink-0'>
-          <dt className='text-muted-foreground text-[11px] leading-4'>
+          <dt className='text-muted-foreground/55 text-[10px] leading-4'>
             {t('Latency short')}
           </dt>
-          <dd className='mt-1 font-mono whitespace-nowrap'>
+          <dd className='text-muted-foreground/80 mt-1 font-mono whitespace-nowrap'>
             {latencyText === '—' ? '—s' : latencyText}
           </dd>
         </div>
         <div title={t('Throughput')} className='shrink-0'>
-          <dt className='text-muted-foreground text-[11px] leading-4'>
+          <dt className='text-muted-foreground/55 text-[10px] leading-4'>
             {t('Throughput short')}
           </dt>
-          <dd className='mt-1 font-mono whitespace-nowrap'>
+          <dd className='text-muted-foreground/80 mt-1 font-mono whitespace-nowrap'>
             {throughputText === '—' ? '—t/s' : throughputText}
           </dd>
         </div>

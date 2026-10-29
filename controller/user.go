@@ -463,6 +463,12 @@ func buildSelfUserData(user *model.User) map[string]any {
 	permissions := calculateUserPermissions(user.Role)
 	permissions["admin_permissions"] = authz.Capabilities(user.Id, user.Role)
 	welfarePointsDaily, welfarePointsPermanent := model.EffectiveWelfarePoints(user)
+	inviteRewardsIssued := 0
+	if issued, err := model.CountWelfarePointLogsBySource(user.Id, model.WelfarePointsSourceInviter); err != nil {
+		common.SysError(common.LogText("failed to count issued invite rewards for user %d: %s", user.Id, err.Error()))
+	} else {
+		inviteRewardsIssued = issued
+	}
 	return map[string]any{
 		"id":                       user.Id,
 		"username":                 user.Username,
@@ -484,6 +490,7 @@ func buildSelfUserData(user *model.User) map[string]any {
 		"aff_count":                user.AffCount,
 		"aff_quota":                user.AffQuota,
 		"aff_history_quota":        user.AffHistoryQuota,
+		"aff_issued_count":         inviteRewardsIssued, // 邀请奖励已发放次数（每次发放落一条流水）
 		"inviter_id":               user.InviterId,
 		"linux_do_id":              user.LinuxDOId,
 		"welfare_points_daily":     welfarePointsDaily,

@@ -47,6 +47,9 @@ const botProtectionSchema = z.object({
   TurnstileCheckEnabled: z.boolean(),
   TurnstileSiteKey: z.string().optional(),
   TurnstileSecretKey: z.string().optional(),
+  AltchaHmacKey: z.union([z.literal(''), z.string().min(16)]).optional(),
+  AltchaMaxNumber: z.number().int().min(10000).max(5000000),
+  AltchaCheckEnabled: z.boolean(),
 })
 
 type BotProtectionFormValues = z.infer<typeof botProtectionSchema>
@@ -146,6 +149,82 @@ export function BotProtectionSection({
                 </FormControl>
                 <FormMessage />
               </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name='AltchaHmacKey'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('ALTCHA HMAC Key')}</FormLabel>
+                <FormControl>
+                  <Input
+                    type='password'
+                    placeholder={t(
+                      'A long random string used to sign challenges'
+                    )}
+                    autoComplete='new-password'
+                    {...field}
+                  />
+                </FormControl>
+                <FormDescription>
+                  {t(
+                    'The self-hosted ALTCHA widget signs its proof-of-work challenges with this key. Changing it invalidates challenges already issued.'
+                  )}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name='AltchaMaxNumber'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('ALTCHA Max Number')}</FormLabel>
+                <FormControl>
+                  <Input
+                    type='number'
+                    min={10000}
+                    max={5000000}
+                    value={field.value}
+                    onChange={(event) =>
+                      field.onChange(event.target.valueAsNumber)
+                    }
+                  />
+                </FormControl>
+                <FormDescription>
+                  {t(
+                    'Upper bound of the proof-of-work search space. Higher values are harder for bots but slower on low-end phones; 100000 takes about a second on a typical phone.'
+                  )}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name='AltchaCheckEnabled'
+            render={({ field }) => (
+              <SettingsSwitchItem>
+                <SettingsSwitchContent>
+                  <FormLabel>{t('Enable ALTCHA')}</FormLabel>
+                  <FormDescription>
+                    {t(
+                      'Protect login and registration with a self-hosted proof-of-work challenge. Turnstile must be disabled first.'
+                    )}
+                  </FormDescription>
+                </SettingsSwitchContent>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </SettingsSwitchItem>
             )}
           />
         </SettingsForm>

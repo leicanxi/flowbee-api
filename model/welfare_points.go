@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -20,6 +21,7 @@ const WelfarePointsMaxBalance = 1_000_000_000
 
 // Point ledger sources. They are stored in welfare_point_logs.source.
 const (
+	WelfarePointsSourceNewUser       = "new_user"
 	WelfarePointsSourceCheckin       = "checkin"
 	WelfarePointsSourceInvitee       = "invitee"
 	WelfarePointsSourceInviter       = "inviter"
@@ -176,6 +178,18 @@ func AddWelfarePoints(userId int, daily int, permanent int, source string, sourc
 	return DB.Transaction(func(tx *gorm.DB) error {
 		return AddWelfarePointsWithTx(tx, userId, daily, permanent, source, sourceRef)
 	})
+}
+
+// grantNewUserWelfarePointsWithTx gives a newly created account its one-off
+// registration gift in the permanent bucket. The user id is the ledger
+// reference, so the (source, source_ref) unique index keeps the gift to one
+// per account.
+func grantNewUserWelfarePointsWithTx(tx *gorm.DB, userId int) error {
+	points := setting.GetWelfareNewUserPoints()
+	if points <= 0 || userId <= 0 {
+		return nil
+	}
+	return AddWelfarePointsWithTx(tx, userId, 0, points, WelfarePointsSourceNewUser, strconv.Itoa(userId))
 }
 
 // CheckWelfarePoints reports whether the user can afford cost right now.
@@ -379,4 +393,14 @@ func GetWelfarePointLogs(userId int, pageInfo *common.PageInfo) error {
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(logs)
 	return nil
+}
+
+// CountWelfarePointLogsBySource 统计某来源的积分发放条数。
+// 邀请奖励按 source=inviter 计数即「已发放」的邀请数（每次发放落一条流水）。
+func CountWelfarePointLogsBySource(userId int, source string) (int, error) {
+	var count int64
+	err := DB.Model(&WelfarePointLog{}).
+		Where("user_id = ? AND source = ?", userId, source).
+		Count(&count).Error
+	return int(count), err
 }

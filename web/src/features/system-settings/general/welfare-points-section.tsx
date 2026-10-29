@@ -13,6 +13,7 @@ const DISABLED_DEFAULT = `{
   "group": "福利",
   "subsidy_groups": ["flowbee专属补贴", "国模企业补贴"],
   "daily_base_points": 0,
+  "new_user_points": 0,
   "model_costs": {
     "default": 1
   },
@@ -31,6 +32,7 @@ const EXAMPLE = `{
   "group": "福利",
   "subsidy_groups": ["flowbee专属补贴", "国模企业补贴"],
   "daily_base_points": 5,
+  "new_user_points": 10,
   "model_costs": {
     "default": 1,
     "deepseek-chat": 1,
@@ -82,7 +84,7 @@ export function WelfarePointsSection({
       <div className='space-y-3'>
         <p className='text-muted-foreground text-sm leading-relaxed'>
           {t(
-            'Daily and check-in points reset every day. Invite, consumption rebate and sponsorship points never expire. A call in the configured welfare group costs the model cost below; an exact model name wins, then the longest trailing "*" prefix, then "default".'
+            'Daily and check-in points reset every day. New-user, invite, consumption rebate and sponsorship points never expire. A call in the configured welfare group costs the model cost below; an exact model name wins, then the longest trailing "*" prefix, then "default".'
           )}
         </p>
         <p className='text-muted-foreground text-sm leading-relaxed'>

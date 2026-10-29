@@ -203,6 +203,17 @@ type UserSponsorshipStats struct {
 	Badges       []string `json:"badges"`
 	Anonymous    bool     `json:"anonymous"`
 	Message      string   `json:"message"`
+	// 本月口径：自己本月支持了几次，以及全站本月有多少人支持过。
+	// 开始使用卡片用这两个数把「赞助一下」从一次性动作变成每月习惯。
+	MonthlySupportCount   int64 `json:"monthly_support_count"`
+	MonthlySupporterCount int64 `json:"monthly_supporter_count"`
+}
+
+// sponsorshipMonthAggregate 是本月已付款支持的汇总。
+type sponsorshipMonthAggregate struct {
+	RaisedMoney    float64
+	SupporterCount int64
+	SupportCount   int64
 }
 
 type sponsorshipAggregate struct {
@@ -410,6 +421,28 @@ type SponsorshipGoal struct {
 	Achieved       bool    `json:"achieved"`
 }
 
+// sponsorshipMonthStart 返回本地时区本月 1 号 0 点的时间戳。
+//
+// 月份边界取服务器本地时区 —— 用 UTC 的话，UTC+8 的用户会看到目标在每月
+// 1 号早上 8 点才重置，对不上「这个月」的直觉。
+func sponsorshipMonthStart() int64 {
+	now := time.Now()
+	return time.Date(
+		now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location(),
+	).Unix()
+}
+
+// getSponsorshipMonthAggregate 汇总本月已付款的支持。
+// 只统计已付款的记录：pending 的单子还没真正收到钱，算进进度会让数字虚高。
+func getSponsorshipMonthAggregate(periodStart int64) (sponsorshipMonthAggregate, error) {
+	var aggregate sponsorshipMonthAggregate
+	err := DB.Model(&SponsorshipOrder{}).
+		Select("COALESCE(SUM(money), 0) AS raised_money, COUNT(DISTINCT user_id) AS supporter_count, COUNT(*) AS support_count").
+		Where("status = ? AND complete_time >= ?", common.TopUpStatusSuccess, periodStart).
+		Scan(&aggregate).Error
+	return aggregate, err
+}
+
 // GetSponsorshipGoal 统计本月的支持进度。目标未配置时返回 nil，调用方据此不展示这一块。
 func GetSponsorshipGoal() (*SponsorshipGoal, error) {
 	setting := operation_setting.GetSponsorshipSetting()
@@ -418,21 +451,9 @@ func GetSponsorshipGoal() (*SponsorshipGoal, error) {
 		return nil, nil
 	}
 
-	now := time.Now()
-	periodStart := time.Date(
-		now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location(),
-	).Unix()
-
-	var aggregate struct {
-		RaisedMoney    float64
-		SupporterCount int64
-		SupportCount   int64
-	}
-	// 只统计已付款的记录：pending 的单子还没真正收到钱，算进进度会让数字虚高。
-	if err := DB.Model(&SponsorshipOrder{}).
-		Select("COALESCE(SUM(money), 0) AS raised_money, COUNT(DISTINCT user_id) AS supporter_count, COUNT(*) AS support_count").
-		Where("status = ? AND complete_time >= ?", common.TopUpStatusSuccess, periodStart).
-		Scan(&aggregate).Error; err != nil {
+	periodStart := sponsorshipMonthStart()
+	aggregate, err := getSponsorshipMonthAggregate(periodStart)
+	if err != nil {
 		return nil, err
 	}
 
@@ -470,6 +491,19 @@ func GetUserSponsorshipStats(userId int) (*UserSponsorshipStats, error) {
 	stats.LastTime = aggregate.LastTime
 	stats.Supported = aggregate.SupportCount > 0
 
+	monthStart := sponsorshipMonthStart()
+	if err := DB.Model(&SponsorshipOrder{}).
+		Where("status = ? AND user_id = ? AND complete_time >= ?",
+			common.TopUpStatusSuccess, userId, monthStart).
+		Count(&stats.MonthlySupportCount).Error; err != nil {
+		return nil, err
+	}
+	monthAggregate, err := getSponsorshipMonthAggregate(monthStart)
+	if err != nil {
+		return nil, err
+	}
+	stats.MonthlySupporterCount = monthAggregate.SupporterCount
+
 	var windowCount int64
 	if err := DB.Model(&SponsorshipOrder{}).
 		Where("status = ? AND user_id = ? AND complete_time >= ?",
@@ -480,7 +514,7 @@ func GetUserSponsorshipStats(userId int) (*UserSponsorshipStats, error) {
 	stats.Badges = sponsorshipBadges(aggregate.FirstTime, windowCount)
 
 	var latest SponsorshipOrder
-	err := DB.Where("status = ? AND user_id = ?", common.TopUpStatusSuccess, userId).
+	err = DB.Where("status = ? AND user_id = ?", common.TopUpStatusSuccess, userId).
 		Order("complete_time DESC, id DESC").First(&latest).Error
 	if err == nil {
 		stats.Anonymous = latest.Anonymous

@@ -27,8 +27,8 @@ type WelfarePointsConsumeTier struct {
 //
 // Two buckets exist:
 //   - daily: daily base + check-in points, reset every day;
-//   - permanent: invite, consumption rebate and sponsorship points, never
-//     expire.
+//   - permanent: new-user, invite, consumption rebate and sponsorship points,
+//     never expire.
 //
 // ModelCosts maps a model name to the points charged for one successful call.
 // An exact match wins, then the longest trailing-"*" prefix, then "default".
@@ -41,6 +41,9 @@ type WelfarePointsSetting struct {
 	SubsidyGroups []string `json:"subsidy_groups"`
 
 	DailyBasePoints int `json:"daily_base_points"`
+
+	// NewUserPoints 是新注册账号一次性领取的永久积分，只影响之后注册的用户。
+	NewUserPoints int `json:"new_user_points"`
 
 	ModelCosts   map[string]int             `json:"model_costs"`
 	ConsumeTiers []WelfarePointsConsumeTier `json:"consume_tiers"`
@@ -61,6 +64,7 @@ var (
 		Group:            "福利",
 		SubsidyGroups:    subsidyGroupsDefault,
 		DailyBasePoints:  0,
+		NewUserPoints:    0,
 		ModelCosts:       map[string]int{"default": 1},
 		ConsumeTiers:     []WelfarePointsConsumeTier{{MinQuota: 0, Points: 0}},
 		CheckinMinPoints: 0,
@@ -120,6 +124,9 @@ func CheckWelfarePointsSetting(jsonStr string) error {
 		return fmt.Errorf("welfare points group must not be empty")
 	}
 	if err := validateWelfarePointAmount("daily_base_points", candidate.DailyBasePoints); err != nil {
+		return err
+	}
+	if err := validateWelfarePointAmount("new_user_points", candidate.NewUserPoints); err != nil {
 		return err
 	}
 	if err := validateWelfarePointAmount("checkin_min_points", candidate.CheckinMinPoints); err != nil {
@@ -255,6 +262,17 @@ func GetWelfareDailyBasePoints() int {
 		return 0
 	}
 	return welfarePointsSetting.DailyBasePoints
+}
+
+// GetWelfareNewUserPoints returns the permanent points granted once to every
+// account created while welfare points are enabled.
+func GetWelfareNewUserPoints() int {
+	welfarePointsMutex.RLock()
+	defer welfarePointsMutex.RUnlock()
+	if !welfarePointsSetting.Enabled {
+		return 0
+	}
+	return welfarePointsSetting.NewUserPoints
 }
 
 func GetWelfareCheckinPoints() (min, max int) {
