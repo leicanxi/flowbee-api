@@ -7720,6 +7720,16 @@
     "Sort by": "並び替え",
     "Availability": "可用性",
     "Consumption": "消費",
-    "Sponsor us · <bold>{{times}}</bold> times this month · <bold>{{supporters}}</bold> people supported": "スポンサーになる · 今月 <bold>{{times}}</bold> 回 · <bold>{{supporters}}</bold> 人が支援済み"
+    "Sponsor us · <bold>{{times}}</bold> times this month · <bold>{{supporters}}</bold> people supported": "スポンサーになる · 今月 <bold>{{times}}</bold> 回 · <bold>{{supporters}}</bold> 人が支援済み",
+    "Last 24h calls": "直近 24 時間の呼び出し",
+    "calls": "回",
+    "Feature entries": "機能入口",
+    "Manage my keys": "キーを管理",
+    "Voice models": "音色広場",
+    "AstrBot singing plugin": "AstrBot 歌唱プラグイン",
+    "AI companion": "AI コンパニオン",
+    "Coming soon": "近日公開",
+    "Douyin": "抖音",
+    "Follow Flowbee": "Flowbee をフォロー"
   }
 }

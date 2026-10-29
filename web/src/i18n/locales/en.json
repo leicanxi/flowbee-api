@@ -7720,6 +7720,16 @@
     "Sort by": "Sort by",
     "Availability": "Availability",
     "Consumption": "Consumption",
-    "Sponsor us · <bold>{{times}}</bold> times this month · <bold>{{supporters}}</bold> people supported": "Sponsor us · <bold>{{times}}</bold> times this month · <bold>{{supporters}}</bold> people supported"
+    "Sponsor us · <bold>{{times}}</bold> times this month · <bold>{{supporters}}</bold> people supported": "Sponsor us · <bold>{{times}}</bold> times this month · <bold>{{supporters}}</bold> people supported",
+    "Last 24h calls": "Last 24h calls",
+    "calls": "calls",
+    "Feature entries": "Feature entries",
+    "Manage my keys": "Manage my keys",
+    "Voice models": "Voice models",
+    "AstrBot singing plugin": "AstrBot singing plugin",
+    "AI companion": "AI companion",
+    "Coming soon": "Coming soon",
+    "Douyin": "Douyin",
+    "Follow Flowbee": "Follow Flowbee"
   }
 }

@@ -7720,6 +7720,16 @@
     "Sort by": "Sắp xếp theo",
     "Availability": "Khả dụng",
     "Consumption": "Tiêu thụ",
-    "Sponsor us · <bold>{{times}}</bold> times this month · <bold>{{supporters}}</bold> people supported": "Tài trợ · <bold>{{times}}</bold> lần trong tháng này · <bold>{{supporters}}</bold> người đã ủng hộ"
+    "Sponsor us · <bold>{{times}}</bold> times this month · <bold>{{supporters}}</bold> people supported": "Tài trợ · <bold>{{times}}</bold> lần trong tháng này · <bold>{{supporters}}</bold> người đã ủng hộ",
+    "Last 24h calls": "Lượt gọi 24 giờ qua",
+    "calls": "lượt",
+    "Feature entries": "Lối vào tính năng",
+    "Manage my keys": "Quản lý khóa của tôi",
+    "Voice models": "Chợ giọng nói",
+    "AstrBot singing plugin": "Plugin hát AstrBot",
+    "AI companion": "Bạn đồng hành AI",
+    "Coming soon": "Sắp ra mắt",
+    "Douyin": "Douyin",
+    "Follow Flowbee": "Theo dõi Flowbee"
   }
 }

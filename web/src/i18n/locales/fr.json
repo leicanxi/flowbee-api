@@ -7720,6 +7720,16 @@
     "Sort by": "Trier par",
     "Availability": "Disponibilité",
     "Consumption": "Consommation",
-    "Sponsor us · <bold>{{times}}</bold> times this month · <bold>{{supporters}}</bold> people supported": "Nous soutenir · <bold>{{times}}</bold> fois ce mois-ci · <bold>{{supporters}}</bold> personnes nous ont soutenus"
+    "Sponsor us · <bold>{{times}}</bold> times this month · <bold>{{supporters}}</bold> people supported": "Nous soutenir · <bold>{{times}}</bold> fois ce mois-ci · <bold>{{supporters}}</bold> personnes nous ont soutenus",
+    "Last 24h calls": "Appels sur 24 h",
+    "calls": "appels",
+    "Feature entries": "Fonctionnalités",
+    "Manage my keys": "Gérer mes clés",
+    "Voice models": "Bibliothèque de voix",
+    "AstrBot singing plugin": "Plugin de chant AstrBot",
+    "AI companion": "Compagnon IA",
+    "Coming soon": "Bientôt disponible",
+    "Douyin": "Douyin",
+    "Follow Flowbee": "Suivre Flowbee"
   }
 }

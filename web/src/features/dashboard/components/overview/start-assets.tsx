@@ -69,42 +69,48 @@ function formatMoney(value: number): string {
 }
 
 /**
- * 参考稿右上角的等高线纹理：纯装饰，右侧更密、向左淡出。
+ * 卡片背景的等高线纹理：纯装饰，像一块布面在卡片右侧隆起。
  *
- * 路径在模块加载时算一次，避免每次渲染重新生成 24 条折线。用
- * `vectorEffect='non-scaling-stroke'` 让卡片宽度变化时线宽保持 0.8px，
- * 不会被拉伸成带状。
+ * 线条贯穿整张卡的高度；中段的 `fold` 让线向左鼓出，越靠中间的线鼓得越多，
+ * 线距随之疏密变化，再配合「隆起处线更亮」的透明度，读起来有体积感。
+ * 所有线共用同一条波形、相邻线只做小幅偏移，相邻线最小间距 8.5，不会交叉。
+ * 路径在模块加载时算一次；`vectorEffect='non-scaling-stroke'` 让线宽不随卡片拉伸。
  */
-const CONTOUR_PATHS = Array.from({ length: 24 }, (_, line) => {
-  const baseX = 250 + line * 16
-  const amplitude = 6 + (line % 6) * 3.4
-  const phase = line * 0.42
+const CONTOUR_LINES = Array.from({ length: 22 }, (_, line) => {
+  const t = line / 21
+  const baseX = 665 - 440 * Math.pow(t, 1.3)
+  const bulge = 78 * Math.sin(Math.PI * Math.min(1, t * 1.15))
+  const opacity = 0.28 + 0.72 * Math.exp(-(((t - 0.38) / 0.3) ** 2))
   const points: string[] = []
 
-  for (let y = -20; y <= 540; y += 14) {
-    const drift =
-      Math.sin(y / 90 + phase) * amplitude +
-      Math.sin(y / 34 + phase * 1.6) * amplitude * 0.35
-    points.push(`${Math.round((baseX + drift) * 10) / 10},${y}`)
+  for (let y = -20; y <= 540; y += 10) {
+    const fold = -bulge * Math.exp(-(((y - 210) / 165) ** 2))
+    const wave =
+      Math.sin(y / 112 + t * 0.9) * 11 + Math.sin(y / 46 + t * 0.6) * 3.5
+    points.push(`${Math.round((baseX + fold + wave) * 10) / 10},${y}`)
   }
 
-  return `M${points.join(' L')}`
+  return {
+    d: `M${points.join(' L')}`,
+    opacity: Math.round(opacity * 100) / 100,
+  }
 })
 
 function ContourBackdrop() {
   return (
     <svg
-      className='pointer-events-none absolute inset-0 h-full w-full [mask-image:linear-gradient(to_right,transparent,black_40%,black_92%,transparent)] text-white/15'
+      className='pointer-events-none absolute inset-0 h-full w-full [mask-image:radial-gradient(90%_120%_at_72%_40%,black_30%,transparent_78%)] text-white/16'
       viewBox='0 0 620 520'
       preserveAspectRatio='none'
       aria-hidden='true'
     >
-      {CONTOUR_PATHS.map((path) => (
+      {CONTOUR_LINES.map(({ d, opacity }) => (
         <path
-          key={path}
-          d={path}
+          key={d}
+          d={d}
           fill='none'
           stroke='currentColor'
+          strokeOpacity={opacity}
           strokeWidth='0.8'
           vectorEffect='non-scaling-stroke'
         />
@@ -199,6 +205,31 @@ export function StartAssetsReceipt(
   const daily = props.user?.welfare_points_daily ?? 0
   const permanent = props.user?.welfare_points_permanent ?? 0
   const pointsTotal = props.user?.welfare_points_total ?? daily + permanent
+  const balance = props.user?.quota ?? 0
+
+  // 与「用量概览」和余额卡共用同一个 queryKey：近 24 小时调用次数和金额
+  // 来自同一份 hourly 数据，不会出现三个地方三个数。
+  const lastDayRange = useMemo(() => computeTimeRange(1), [])
+  const usageTrendQuery = useQuery({
+    queryKey: [
+      'dashboard',
+      'overview',
+      'summary-sparklines',
+      lastDayRange.start_timestamp,
+      lastDayRange.end_timestamp,
+    ],
+    queryFn: async () =>
+      getUserQuotaDates({
+        start_timestamp: lastDayRange.start_timestamp,
+        end_timestamp: lastDayRange.end_timestamp,
+        default_time: 'hour',
+      }),
+    staleTime: 60 * 1000,
+  })
+  const last24hCalls = (usageTrendQuery.data?.data ?? []).reduce(
+    (total, item) => total + (Number(item.count) || 0),
+    0
+  )
 
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
   const periodLabel = useMemo(() => {
@@ -306,20 +337,9 @@ export function StartAssetsReceipt(
             </>
           ) : null}
         </div>
-
-        {/* 参考稿的刻度尺：在进度条下方压一排短刻线，弱化“这只是个条”，
-         *  读起来更像一张账单。 */}
-        <div
-          className='relative mt-1.5 h-[7px] w-full text-white/25'
-          aria-hidden='true'
-        >
-          <span className='absolute inset-x-0 top-0 h-px bg-current opacity-40' />
-          <span className='absolute inset-x-0 top-0 h-[3px] bg-[repeating-linear-gradient(90deg,currentColor_0_1px,transparent_1px_7px)] opacity-60' />
-          <span className='absolute inset-x-0 top-0 h-[6px] bg-[repeating-linear-gradient(90deg,currentColor_0_1px,transparent_1px_35px)] opacity-80' />
-        </div>
       </div>
 
-      {/* 三栏在手机上仍保持一行：横排时每栏只剩一个金额，竖排反而把一张
+      {/* 三栏在手机上仍保持一行：横排时每栏只剩一个数字，竖排反而把一张
        *  收据拆成三块。窄屏用更小的字号和间距，不切换列数。 */}
       <dl className='relative mt-6 grid grid-cols-3 border-t border-white/10 pt-4'>
         <div className='pr-2 sm:pr-5'>
@@ -328,23 +348,10 @@ export function StartAssetsReceipt(
               className='size-[7px] shrink-0 rounded-[2px] bg-[#f3ede4]'
               aria-hidden='true'
             />
-            {t('Free allowance')}
+            {t('Current balance')}
           </dt>
           <dd className='mt-2 font-serif text-[18px] leading-none text-[#f8f4ee] tabular-nums sm:text-[24px]'>
-            {formatMoney(welfareValue)}
-          </dd>
-        </div>
-
-        <div className='border-l border-white/10 pl-3 sm:pl-5'>
-          <dt className='flex items-center gap-1.5 text-[10px] text-[#f8f4ee]/55 sm:text-[11.5px]'>
-            <span
-              className='bg-primary size-[7px] shrink-0 rounded-[2px]'
-              aria-hidden='true'
-            />
-            {t('Model subsidy')}
-          </dt>
-          <dd className='mt-2 font-serif text-[18px] leading-none text-[#f8f4ee] tabular-nums sm:text-[24px]'>
-            {formatMoney(subsidyValue)}
+            {formatMoney(balance)}
           </dd>
         </div>
 
@@ -369,6 +376,24 @@ export function StartAssetsReceipt(
             >
               {t('Earn')}
             </Link>
+          </dd>
+        </div>
+
+        <div className='border-l border-white/10 pl-3 sm:pl-5'>
+          <dt className='flex items-center gap-1.5 text-[10px] text-[#f8f4ee]/55 sm:text-[11.5px]'>
+            <span
+              className='bg-primary size-[7px] shrink-0 rounded-[2px]'
+              aria-hidden='true'
+            />
+            {t('Last 24h calls')}
+          </dt>
+          <dd className='mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-1'>
+            <span className='font-serif text-[18px] leading-none text-[#f8f4ee] tabular-nums sm:text-[24px]'>
+              {formatNumber(last24hCalls)}
+            </span>
+            <span className='text-[10px] text-[#f8f4ee]/55 sm:text-[11.5px]'>
+              {t('calls')}
+            </span>
           </dd>
         </div>
       </dl>

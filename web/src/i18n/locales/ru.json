@@ -7720,6 +7720,16 @@
     "Sort by": "Сортировка",
     "Availability": "Доступность",
     "Consumption": "Расход",
-    "Sponsor us · <bold>{{times}}</bold> times this month · <bold>{{supporters}}</bold> people supported": "Поддержать · <bold>{{times}}</bold> раз в этом месяце · <bold>{{supporters}}</bold> человек поддержали"
+    "Sponsor us · <bold>{{times}}</bold> times this month · <bold>{{supporters}}</bold> people supported": "Поддержать · <bold>{{times}}</bold> раз в этом месяце · <bold>{{supporters}}</bold> человек поддержали",
+    "Last 24h calls": "Вызовы за 24 часа",
+    "calls": "раз",
+    "Feature entries": "Функции",
+    "Manage my keys": "Управление ключами",
+    "Voice models": "Библиотека голосов",
+    "AstrBot singing plugin": "Плагин пения AstrBot",
+    "AI companion": "ИИ-компаньон",
+    "Coming soon": "Скоро",
+    "Douyin": "Douyin",
+    "Follow Flowbee": "Следить за Flowbee"
   }
 }

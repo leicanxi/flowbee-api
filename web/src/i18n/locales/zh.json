@@ -7720,6 +7720,16 @@
     "Sort by": "排序",
     "Availability": "可用性",
     "Consumption": "消耗",
-    "Sponsor us · <bold>{{times}}</bold> times this month · <bold>{{supporters}}</bold> people supported": "赞助一下 · 本月 <bold>{{times}}</bold> 次 · <bold>{{supporters}}</bold> 人已支持"
+    "Sponsor us · <bold>{{times}}</bold> times this month · <bold>{{supporters}}</bold> people supported": "赞助一下 · 本月 <bold>{{times}}</bold> 次 · <bold>{{supporters}}</bold> 人已支持",
+    "Last 24h calls": "近 24 小时调用",
+    "calls": "次",
+    "Feature entries": "功能入口",
+    "Manage my keys": "管理我的密钥",
+    "Voice models": "音色广场",
+    "AstrBot singing plugin": "AstrBot 唱歌插件",
+    "AI companion": "AI 陪伴",
+    "Coming soon": "即将上线",
+    "Douyin": "抖音",
+    "Follow Flowbee": "关注 Flowbee"
   }
 }
