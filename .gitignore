@@ -62,3 +62,4 @@ web/src/i18n/locales/_reports/
 
 # 本地构建输出
 web-build.log
+web-build-err.log
