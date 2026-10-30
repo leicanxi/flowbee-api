@@ -54,6 +54,13 @@ type WelfarePointsSetting struct {
 	InviteePoints int `json:"invitee_points"`
 	InviterPoints int `json:"inviter_points"`
 	SponsorPoints int `json:"sponsor_points"`
+
+	// InviterRebatePercent 是被邀请人首充到账后，邀请人获得的余额返利百分比
+	// （0-100，相对实际到账额度）。0 表示关闭返利、维持 InviterPoints 积分行为。
+	// 与 Enabled 解耦：返利是钱包余额，不属于福利积分经济。
+	InviterRebatePercent float64 `json:"inviter_rebate_percent"`
+	// InviterRebateMaxQuota 是单笔返利封顶（quota 单位），0 表示不封顶。
+	InviterRebateMaxQuota int `json:"inviter_rebate_max_quota"`
 }
 
 var (
@@ -72,6 +79,9 @@ var (
 		InviteePoints:    0,
 		InviterPoints:    0,
 		SponsorPoints:    0,
+
+		InviterRebatePercent:  0,
+		InviterRebateMaxQuota: 0,
 	}
 )
 
@@ -146,6 +156,12 @@ func CheckWelfarePointsSetting(jsonStr string) error {
 	}
 	if err := validateWelfarePointAmount("sponsor_points", candidate.SponsorPoints); err != nil {
 		return err
+	}
+	if candidate.InviterRebatePercent < 0 || candidate.InviterRebatePercent > 100 {
+		return fmt.Errorf("inviter_rebate_percent must be between 0 and 100: %g", candidate.InviterRebatePercent)
+	}
+	if candidate.InviterRebateMaxQuota < 0 || candidate.InviterRebateMaxQuota > common.MaxWalletQuota {
+		return fmt.Errorf("inviter_rebate_max_quota out of range: %d", candidate.InviterRebateMaxQuota)
 	}
 
 	for model, cost := range candidate.ModelCosts {
@@ -309,6 +325,21 @@ func GetWelfareSponsorPoints() int {
 		return 0
 	}
 	return welfarePointsSetting.SponsorPoints
+}
+
+// GetWelfareInviterRebatePercent 返回邀请余额返利百分比。不跟随 Enabled：
+// 返利发的是钱包余额，与福利积分经济解耦，关闭积分不应关掉返利。
+func GetWelfareInviterRebatePercent() float64 {
+	welfarePointsMutex.RLock()
+	defer welfarePointsMutex.RUnlock()
+	return welfarePointsSetting.InviterRebatePercent
+}
+
+// GetWelfareInviterRebateMaxQuota 返回单笔返利封顶（quota 单位），0 表示不封顶。
+func GetWelfareInviterRebateMaxQuota() int {
+	welfarePointsMutex.RLock()
+	defer welfarePointsMutex.RUnlock()
+	return welfarePointsSetting.InviterRebateMaxQuota
 }
 
 // GetWelfarePointCost resolves the per-call point cost for a model.
