@@ -24,7 +24,9 @@ const DISABLED_DEFAULT = `{
   "checkin_max_points": 0,
   "invitee_points": 0,
   "inviter_points": 0,
-  "sponsor_points": 0
+  "sponsor_points": 0,
+  "inviter_rebate_percent": 0,
+  "inviter_rebate_max_quota": 0
 }`
 
 const EXAMPLE = `{
@@ -47,7 +49,9 @@ const EXAMPLE = `{
   "checkin_max_points": 20,
   "invitee_points": 5,
   "inviter_points": 20,
-  "sponsor_points": 30
+  "sponsor_points": 30,
+  "inviter_rebate_percent": 5,
+  "inviter_rebate_max_quota": 1000000
 }`
 
 export function WelfarePointsSection({
@@ -90,6 +94,11 @@ export function WelfarePointsSection({
         <p className='text-muted-foreground text-sm leading-relaxed'>
           {t(
             'Consumption tiers use quota units. 500000 quota is ¥1 with the default quota-per-unit setting.'
+          )}
+        </p>
+        <p className='text-muted-foreground text-sm leading-relaxed'>
+          {t(
+            'When inviter_rebate_percent is above 0, the inviter earns that percentage of the invitee first credited top-up as balance instead of inviter_points; inviter_rebate_max_quota caps each rebate in quota units (0 means no cap).'
           )}
         </p>
         <p className='text-muted-foreground text-sm leading-relaxed'>

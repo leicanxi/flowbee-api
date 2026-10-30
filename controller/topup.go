@@ -597,3 +597,26 @@ func AdminCompleteTopUp(c *gin.Context) {
 	}
 	common.ApiSuccess(c, nil)
 }
+
+// AdminClawbackInviteRebate 管理员扣回某笔充值订单的邀请余额返利
+// （退款/拒付时的兜底操作）。重复扣回幂等。
+func AdminClawbackInviteRebate(c *gin.Context) {
+	var req AdminCompleteTopupRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.TradeNo == "" {
+		common.ApiErrorT(c, "Invalid parameters")
+		return
+	}
+
+	topUp := model.GetTopUpByTradeNo(req.TradeNo)
+	if topUp == nil {
+		common.ApiError(c, common.NewMessage("Top-up order does not exist"))
+		return
+	}
+
+	deducted, err := model.ClawbackInviteRebate(topUp.Id)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, gin.H{"deducted": deducted})
+}

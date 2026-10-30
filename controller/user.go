@@ -469,6 +469,11 @@ func buildSelfUserData(user *model.User) map[string]any {
 	} else {
 		inviteRewardsIssued = issued
 	}
+	if rebates, err := model.CountInviteRebateLogs(user.Id); err != nil {
+		common.SysError(common.LogText("failed to count issued invite rebates for user %d: %s", user.Id, err.Error()))
+	} else {
+		inviteRewardsIssued += rebates
+	}
 	return map[string]any{
 		"id":                       user.Id,
 		"username":                 user.Username,

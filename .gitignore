@@ -59,3 +59,6 @@ web/bin/
 
 # i18n sync 生成的报告
 web/src/i18n/locales/_reports/
+
+# 本地构建输出
+web-build.log

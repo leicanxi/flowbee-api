@@ -198,6 +198,10 @@ export interface WelfarePointsConfig {
   invitee_points: number
   inviter_points: number
   sponsor_points: number
+  /** 邀请人余额返利百分比（0 表示关闭、维持积分奖励）。 */
+  inviter_rebate_percent: number
+  /** 单笔返利封顶（quota 单位，0 表示不封顶）。 */
+  inviter_rebate_max_quota: number
 }
 
 export async function getWelfarePoints() {

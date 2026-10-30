@@ -42,6 +42,8 @@ const defaultBillingSettings: BillingSettings = {
       invitee_points: 0,
       inviter_points: 0,
       sponsor_points: 0,
+      inviter_rebate_percent: 0,
+      inviter_rebate_max_quota: 0,
     },
     null,
     2

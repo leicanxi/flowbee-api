@@ -58,6 +58,9 @@ func GetWelfarePoints(c *gin.Context) {
 			"invitee_points":     cfg.InviteePoints,
 			"inviter_points":     cfg.InviterPoints,
 			"sponsor_points":     cfg.SponsorPoints,
+
+			"inviter_rebate_percent":   cfg.InviterRebatePercent,
+			"inviter_rebate_max_quota": cfg.InviterRebateMaxQuota,
 		},
 	})
 }

@@ -28,6 +28,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { WelfarePointsLogsDialog } from '@/features/dashboard/components/overview/welfare-points-logs-dialog'
 import { getWelfarePoints } from '@/features/dashboard/api'
+import { formatQuotaWithCurrency } from '@/lib/currency'
 import { formatNumber } from '@/lib/format'
 
 import type { UserWalletData } from '../types'
@@ -53,7 +54,7 @@ export function AffiliateRewardsCard(props: AffiliateRewardsCardProps) {
   const { t } = useTranslation()
   const [logsOpen, setLogsOpen] = useState(false)
 
-  // 规则说明需要展示双方的积分面额，取积分配置里的发放口径。
+  // 规则说明需要展示双方的奖励口径（积分面额或余额返利比例），取积分配置。
   const rulesQuery = useQuery({
     queryKey: ['welfare-points', 'invite-rules'],
     queryFn: async () => {
@@ -65,7 +66,35 @@ export function AffiliateRewardsCard(props: AffiliateRewardsCardProps) {
 
   const inviterPoints = rulesQuery.data?.inviter_points ?? 0
   const inviteePoints = rulesQuery.data?.invitee_points ?? 0
+  const rebatePercent = rulesQuery.data?.inviter_rebate_percent ?? 0
+  const rebateMaxQuota = rulesQuery.data?.inviter_rebate_max_quota ?? 0
   const hasAmounts = inviterPoints > 0 || inviteePoints > 0
+
+  // 返利开启时邀请人拿的是余额返利而非积分，规则句按返利口径展示。
+  let rulesSentence
+  if (rebatePercent > 0 && rebateMaxQuota > 0) {
+    rulesSentence = t(
+      'After your friend signs up via your link and their first top-up is credited, you earn a balance rebate of {{percent}}% of the credited amount, up to {{cap}} per order, credited automatically; your friend keeps all top-up bonuses.',
+      {
+        percent: rebatePercent,
+        cap: formatQuotaWithCurrency(rebateMaxQuota),
+      }
+    )
+  } else if (rebatePercent > 0) {
+    rulesSentence = t(
+      'After your friend signs up via your link and their first top-up is credited, you earn a balance rebate of {{percent}}% of the credited amount, credited automatically; your friend keeps all top-up bonuses.',
+      { percent: rebatePercent }
+    )
+  } else if (hasAmounts) {
+    rulesSentence = t(
+      'After your friend signs up via your link and their first top-up is credited, you earn {{inviter}} bonus points and your friend earns {{invitee}}, credited automatically; your friend keeps all top-up bonuses.',
+      { inviter: inviterPoints, invitee: inviteePoints }
+    )
+  } else {
+    rulesSentence = t(
+      "Invite rewards are credited automatically after your friend's first top-up; your friend keeps all top-up bonuses."
+    )
+  }
 
   // 改造#8：优先调起手机原生分享面板；不支持（个别桌面浏览器）时降级为复制链接
   const handleNativeShare = useCallback(async () => {
@@ -173,14 +202,7 @@ export function AffiliateRewardsCard(props: AffiliateRewardsCardProps) {
         </div>
 
         <p className='text-muted-foreground text-xs leading-relaxed'>
-          {hasAmounts
-            ? t(
-                'After your friend signs up via your link and their first top-up is credited, you earn {{inviter}} bonus points and your friend earns {{invitee}}, credited automatically; your friend keeps all top-up bonuses.',
-                { inviter: inviterPoints, invitee: inviteePoints }
-              )
-            : t(
-                "Invite rewards are credited automatically after your friend's first top-up; your friend keeps all top-up bonuses."
-              )}
+          {rulesSentence}
         </p>
       </CardContent>
 

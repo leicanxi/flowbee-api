@@ -365,6 +365,7 @@ func migrateDB() error {
 		&TwoFABackupCode{},
 		&Checkin{},
 		&WelfarePointLog{},
+		&InviteRebateLog{},
 		&OverviewDailyStat{},
 		&LotteryPrizeStock{},
 		&LotteryDraw{},

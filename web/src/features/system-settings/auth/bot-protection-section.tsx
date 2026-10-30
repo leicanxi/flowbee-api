@@ -78,8 +78,16 @@ export function BotProtectionSection({
       ([key, value]) =>
         value !== defaultValues[key as keyof BotProtectionFormValues]
     )
+    // 启用开关最后保存：先落库密钥/参数再启用，避免开关先于配置生效
+    // （上游 #7960 对 Turnstile 的修复，对 ALTCHA 同样适用；两家互斥时，
+    // 关闭的一方值为 false 排在前组，也保证「先关后开」）。
+    const enableKeys = new Set(['TurnstileCheckEnabled', 'AltchaCheckEnabled'])
+    const orderedUpdates = [
+      ...updates.filter(([key]) => !enableKeys.has(key)),
+      ...updates.filter(([key, value]) => enableKeys.has(key) && value === true),
+    ]
 
-    for (const [key, value] of updates) {
+    for (const [key, value] of orderedUpdates) {
       await updateOption.mutateAsync({ key, value: value ?? '' })
     }
   }
