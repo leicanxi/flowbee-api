@@ -39,6 +39,18 @@ func GetCurrentLogPath() string {
 	return currentLogPath
 }
 
+// CloseLogFile closes the current log file (if any). Tests must call it before
+// temp-directory cleanup, because Windows cannot unlink an open file; a later
+// SetupLogger call reopens a new file.
+func CloseLogFile() {
+	currentLogPathMu.Lock()
+	defer currentLogPathMu.Unlock()
+	if currentLogFile != nil {
+		_ = currentLogFile.Close()
+		currentLogFile = nil
+	}
+}
+
 func SetupLogger() {
 	defer func() {
 		setupLogWorking = false

@@ -27,6 +27,9 @@ var accessTokenExemptRoutes = []string{
 	"GET /api/status",
 	"GET /api/uptime/status",
 	"GET /api/notice",
+	// 验证码挑战与福利页推广内容：登录前即可读取。
+	"GET /api/captcha/altcha",
+	"GET /api/welfare_promo",
 	"GET /api/user-agreement",
 	"GET /api/privacy-policy",
 	"GET /api/about",
