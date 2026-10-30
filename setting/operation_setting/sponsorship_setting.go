@@ -20,6 +20,17 @@ type SponsorshipTier struct {
 	Money   float64 `json:"money"`
 }
 
+// SponsorshipPartner 合作伙伴位的一条。
+//
+// 与支持者名单完全分开：名单只感谢、不排序、不展示金额；
+// 这一块是商业展示位，按配置顺序排列。以后接真实赞助时，
+// 在这里整块标"广告/赞助"即可，不必动气泡墙。
+type SponsorshipPartner struct {
+	Name string `json:"name"`
+	Url  string `json:"url"`
+	Note string `json:"note"`
+}
+
 // SponsorshipSetting 支持（赞助）功能的全部可调参数。
 //
 // 设计要点：
@@ -31,6 +42,18 @@ type SponsorshipTier struct {
 type SponsorshipSetting struct {
 	Enabled bool   `json:"enabled"`
 	Title   string `json:"title"`
+
+	// BusinessContact 是页面最底部那行「合作意向或建议」的联系方式，
+	// 邮箱或链接都可以；留空则整行不展示。
+	//
+	// 单独放一个字段而不是写死在前端：这行地址以后可能换人接待、
+	// 换成专用邮箱或表单，改一次配置比改一次代码便宜。
+	BusinessContact string `json:"business_contact"`
+
+	// Partners 是页面底部的合作伙伴位，按配置顺序展示；不足三个时前端补空位。
+	// 链接只接受 http(s)，由公开接口过滤后再下发，避免 javascript: 之类的地址
+	// 被写进公开页。
+	Partners []SponsorshipPartner `json:"partners"`
 
 	// 固定档位（前端按顺序渲染，与自定义档一起构成四个并列的选项）。
 	Tiers []SponsorshipTier `json:"tiers"`
@@ -73,6 +96,16 @@ type SponsorshipSetting struct {
 	// 只看"最近有没有支持"不叫持续，必须有次数下限，称号才对得起它的名字。
 	ContinuousWindowMonths int `json:"continuous_window_months"`
 	ContinuousMinCount     int `json:"continuous_min_count"`
+
+	// ---- 金额称号门槛 ----
+	//
+	// 单笔实付达到 MajorSupporterMinMoney 发「一掷千金」，历史累计实付达到
+	// CumulativeSupporterMinMoney 发「累计支持」。<=0 表示不发放。
+	//
+	// 用门槛而不是"金额最高的 N 位"：按名次发称号，后来者一多，
+	// 先来的人就会被挤掉，那不是称号，是排行榜。
+	MajorSupporterMinMoney      float64 `json:"major_supporter_min_money"`
+	CumulativeSupporterMinMoney float64 `json:"cumulative_supporter_min_money"`
 }
 
 // 默认配置。
@@ -81,6 +114,12 @@ type SponsorshipSetting struct {
 var sponsorshipSetting = SponsorshipSetting{
 	Enabled: false,
 	Title:   "支持 FlowBee",
+	// 已在 Cloudflare Email Routing 配好 contact@flowbee.top → 站主邮箱。
+	BusinessContact: "contact@flowbee.top",
+	// 目前只有站主自己的主页占位；等 DNS 切到 leicanxi.top 在后台改这条即可。
+	Partners: []SponsorshipPartner{
+		{Name: "Leicanxi", Url: "https://leicanxi.edgeone.dev", Note: "个人主页"},
+	},
 	Tiers: []SponsorshipTier{
 		{Id: "coffee", Label: "一杯咖啡", IconUrl: "https://img.remit.ee/i/iy8CP7nMOsgH", Money: 10},
 		{Id: "cake", Label: "一份甜点", IconUrl: "https://img.remit.ee/i/hDmAPrXEtflC", Money: 30},
@@ -103,6 +142,11 @@ var sponsorshipSetting = SponsorshipSetting{
 	EarlySupporterDeadline: 1792252799,
 	ContinuousWindowMonths: 2,
 	ContinuousMinCount:     2,
+
+	// 100 是最高档位（50）的两倍，200 相当于连续两次单笔达到门槛：
+	// 两个门槛都高于常规档位，但又不至于只有极少数人够得着。
+	MajorSupporterMinMoney:      100,
+	CumulativeSupporterMinMoney: 200,
 }
 
 func init() {

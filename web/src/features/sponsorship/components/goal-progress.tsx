@@ -71,6 +71,10 @@ export function GoalProgress(props: { goal: SponsorshipGoal }) {
           : t('{{count}} people supported this month', {
               count: goal.supporter_count,
             })}
+        <span className='mx-1.5' aria-hidden='true'>
+          ·
+        </span>
+        {t('{{total}} in total', { total: goal.total_supporter_count })}
       </p>
     </div>
   )

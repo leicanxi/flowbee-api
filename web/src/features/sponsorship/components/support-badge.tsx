@@ -20,7 +20,12 @@ import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/utils'
 
-import { SPONSOR_BADGE_CONTINUOUS, SPONSOR_BADGE_EARLY } from '../types'
+import {
+  SPONSOR_BADGE_CONTINUOUS,
+  SPONSOR_BADGE_CUMULATIVE,
+  SPONSOR_BADGE_EARLY,
+  SPONSOR_BADGE_MAJOR,
+} from '../types'
 
 /**
  * 称号 id → 文案 key 与配色。
@@ -29,8 +34,8 @@ import { SPONSOR_BADGE_CONTINUOUS, SPONSOR_BADGE_EARLY } from '../types'
  * 与「早期支持者 / 持续支持者」这类白话称号在形式上天然分开，用户扫一眼
  * 就能分清哪个是等级、哪个是称号，不需要靠理解词义去区分。
  *
- * 两个称号给不同的颜色而不是同一个灰胶囊：它们在名单里是并排出现的，
- * 同色时会被读成一串无语义的长标签，分开配色才能一眼看出这是"两种身份"。
+ * 每个称号给不同的颜色而不是同一个灰胶囊：它们在名单里是并排出现的，
+ * 同色时会被读成一串无语义的长标签，分开配色才能一眼看出这是"几种身份"。
  */
 const BADGE_STYLES: Record<string, { labelKey: string; className: string }> = {
   [SPONSOR_BADGE_EARLY]: {
@@ -40,6 +45,14 @@ const BADGE_STYLES: Record<string, { labelKey: string; className: string }> = {
   [SPONSOR_BADGE_CONTINUOUS]: {
     labelKey: 'Ongoing supporter',
     className: 'bg-[#e3efe5] text-[#3d6748] border-[#cde1d2]',
+  },
+  [SPONSOR_BADGE_MAJOR]: {
+    labelKey: 'Major supporter',
+    className: 'bg-[#f3e0dc] text-[#8c4a3f] border-[#e5c9c2]',
+  },
+  [SPONSOR_BADGE_CUMULATIVE]: {
+    labelKey: 'Cumulative supporter',
+    className: 'bg-[#dfe8f2] text-[#3f5f7d] border-[#c6d6e6]',
   },
 }
 

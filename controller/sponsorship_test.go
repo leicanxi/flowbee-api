@@ -44,7 +44,7 @@ func TestResolveSponsorshipMoney(t *testing.T) {
 
 	t.Run("NaN 与无穷必须先被挡掉，大小比较对它们无效", func(t *testing.T) {
 		for name, money := range map[string]float64{
-			"NaN":  math.NaN(),
+			"NaN": math.NaN(),
 			"正无穷": math.Inf(1),
 			"负无穷": math.Inf(-1),
 		} {
@@ -147,4 +147,30 @@ func TestSanitizeSponsorshipMessage(t *testing.T) {
 		// 所以不存在 XSS 面，也不需要在这里做 HTML 清洗。
 		assert.Equal(t, "<b>hi</b>", sanitizeSponsorshipMessage(setting, "<b>hi</b>"))
 	})
+}
+
+// TestBuildSponsorshipPartners 锁定公开合作位的准入条件：
+// 名称与链接缺一不可，链接只能是 http(s) 且带主机名，
+// 否则后台误填的 javascript: 或相对路径会直接变成公开页的 href。
+func TestBuildSponsorshipPartners(t *testing.T) {
+	setting := &operation_setting.SponsorshipSetting{
+		Partners: []operation_setting.SponsorshipPartner{
+			{Name: " Leicanxi ", Url: " https://leicanxi.edgeone.dev ", Note: " 个人主页 "},
+			{Name: "", Url: "https://empty-name.example"},
+			{Name: "No URL", Url: "   "},
+			{Name: "Script", Url: "javascript:alert(1)"},
+			{Name: "Relative", Url: "/partners"},
+			{Name: "FTP", Url: "ftp://example.com"},
+			{Name: "Second", Url: "https://second.example"},
+		},
+	}
+
+	partners := buildSponsorshipPartners(setting)
+
+	require.Len(t, partners, 2)
+	assert.Equal(t, "Leicanxi", partners[0].Name)
+	assert.Equal(t, "https://leicanxi.edgeone.dev", partners[0].Url)
+	assert.Equal(t, "个人主页", partners[0].Note)
+	assert.Equal(t, "Second", partners[1].Name)
+	assert.Empty(t, partners[1].Note)
 }

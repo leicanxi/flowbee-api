@@ -28,6 +28,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { getMySponsorship, getSponsorshipInfo } from './api'
 import { GoalProgress } from './components/goal-progress'
 import { MySupport } from './components/my-support'
+import { PartnerSlots } from './components/partner-slots'
 import { SponsorWall } from './components/sponsor-wall'
 import { SupportSection } from './components/support-section'
 
@@ -142,6 +143,33 @@ export function Sponsors(props: { paymentResult?: SponsorshipPaymentResult }) {
             isAuthenticated={isAuthenticated}
           />
         </section>
+
+        <section aria-label={t('Partners')}>
+          <PartnerSlots
+            partners={info.partners}
+            contact={info.business_contact}
+          />
+        </section>
+
+        {info.business_contact && (
+          // 放在页面最底部而不是「我要参与」下面：这是一句补充说明，
+          // 贴着主行动会看起来像第二个入口，也打断「看完名单→决定支持」的顺序。
+          <p className='text-muted-foreground text-center text-xs'>
+            <a
+              href={
+                info.business_contact.includes('@')
+                  ? `mailto:${info.business_contact}`
+                  : info.business_contact
+              }
+              className='underline-offset-4 hover:text-foreground hover:underline'
+            >
+              {t(
+                'For collaboration or suggestions, feel free to contact: {{contact}}',
+                { contact: info.business_contact }
+              )}
+            </a>
+          </p>
+        )}
       </div>
     </PublicLayout>
   )

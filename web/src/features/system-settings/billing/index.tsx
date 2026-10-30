@@ -165,6 +165,10 @@ const defaultBillingSettings: BillingSettings = {
   // 走兜底路径保存一次就会把后端的默认档位覆盖成这里写的值。
   'sponsorship_setting.enabled': false,
   'sponsorship_setting.title': '支持 FlowBee',
+  'sponsorship_setting.business_contact': 'contact@flowbee.top',
+  'sponsorship_setting.partners': JSON.stringify([
+    { name: 'Leicanxi', url: 'https://leicanxi.edgeone.dev', note: '个人主页' },
+  ]),
   'sponsorship_setting.goal_enabled': true,
   'sponsorship_setting.goal_name': '每月服务器与 API 开销',
   'sponsorship_setting.goal_target_money': 1500,
@@ -198,6 +202,8 @@ const defaultBillingSettings: BillingSettings = {
   'sponsorship_setting.early_supporter_deadline': 1792252799,
   'sponsorship_setting.continuous_window_months': 2,
   'sponsorship_setting.continuous_min_count': 2,
+  'sponsorship_setting.major_supporter_min_money': 100,
+  'sponsorship_setting.cumulative_supporter_min_money': 200,
 }
 
 export function BillingSettings() {

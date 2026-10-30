@@ -53,6 +53,12 @@ interface RawTier {
   money?: number
 }
 
+interface RawPartner {
+  name?: string
+  url?: string
+  note?: string
+}
+
 /** Unix 秒 → datetime-local 输入值 */
 function toLocalInput(ts: number): string {
   if (!ts || ts <= 0) return ''
@@ -71,17 +77,16 @@ function toUnix(value: string): number {
 }
 
 /**
- * 把配置里的档位 JSON 解析成表单行。
+ * 把配置里存储的 JSON 数组解析成表单行。
  *
  * 解析失败时返回空数组而不是抛错：后台配置里存了坏 JSON 时，
  * 页面应该还能打开并让人把它改回来，而不是整块设置页白屏。
  */
-function parseTiers(raw: string): RawTier[] {
+function parseJsonArray<T>(raw: string): T[] {
   if (!raw) return []
   try {
     const parsed: unknown = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return []
-    return parsed as RawTier[]
+    return Array.isArray(parsed) ? (parsed as T[]) : []
   } catch {
     return []
   }
@@ -94,6 +99,12 @@ const tierSchema = z.object({
   money: z.coerce.number().positive(),
 })
 
+const partnerSchema = z.object({
+  name: z.string(),
+  url: z.string(),
+  note: z.string(),
+})
+
 /** 表单形态 → 配置里存储的 JSON 形态。 */
 function toServerTiers(tiers: Values['tiers']): RawTier[] {
   return tiers.map((tier) => ({
@@ -104,9 +115,19 @@ function toServerTiers(tiers: Values['tiers']): RawTier[] {
   }))
 }
 
+function toServerPartners(partners: Values['partners']): RawPartner[] {
+  return partners.map((partner) => ({
+    name: partner.name,
+    url: partner.url,
+    note: partner.note,
+  }))
+}
+
 const schema = z.object({
   enabled: z.boolean(),
   title: z.string(),
+  businessContact: z.string(),
+  partners: z.array(partnerSchema),
   goalEnabled: z.boolean(),
   goalName: z.string(),
   goalTargetMoney: z.coerce.number().min(0),
@@ -120,6 +141,8 @@ const schema = z.object({
   earlyDeadline: z.string(),
   continuousWindowMonths: z.coerce.number().int().positive(),
   continuousMinCount: z.coerce.number().int().positive(),
+  majorSupporterMinMoney: z.coerce.number().min(0),
+  cumulativeSupporterMinMoney: z.coerce.number().min(0),
 })
 
 type Values = z.infer<typeof schema>
@@ -127,6 +150,9 @@ type Values = z.infer<typeof schema>
 export interface SponsorshipSettingsDefaults {
   enabled: boolean
   title: string
+  businessContact: string
+  /** 配置里原样存下来的合作位 JSON 字符串 */
+  partners: string
   goalEnabled: boolean
   goalName: string
   goalTargetMoney: number
@@ -141,6 +167,8 @@ export interface SponsorshipSettingsDefaults {
   earlyDeadline: number
   continuousWindowMonths: number
   continuousMinCount: number
+  majorSupporterMinMoney: number
+  cumulativeSupporterMinMoney: number
 }
 
 export function SponsorshipSettingsSection({
@@ -151,16 +179,26 @@ export function SponsorshipSettingsSection({
   const { t } = useTranslation()
   const updateOption = useUpdateOption()
 
-  const initialTiers = parseTiers(defaultValues.tiers).map((tier) => ({
-    id: tier.id ?? '',
-    label: tier.label ?? '',
-    iconUrl: tier.icon_url ?? '',
-    money: tier.money ?? 0,
+  const initialTiers = parseJsonArray<RawTier>(defaultValues.tiers).map(
+    (tier) => ({
+      id: tier.id ?? '',
+      label: tier.label ?? '',
+      iconUrl: tier.icon_url ?? '',
+      money: tier.money ?? 0,
+    })
+  )
+  const initialPartners = parseJsonArray<RawPartner>(
+    defaultValues.partners
+  ).map((partner) => ({
+    name: partner.name ?? '',
+    url: partner.url ?? '',
+    note: partner.note ?? '',
   }))
   // 脏检查用规范化后的形态比对，而不是直接比原始 JSON 字符串：
   // 服务端存回来的字符串在字段顺序或空白上可能与重新序列化的结果不同，
   // 直接比字符串会导致"没改也会提交"。
   const initialTiersJson = JSON.stringify(toServerTiers(initialTiers))
+  const initialPartnersJson = JSON.stringify(toServerPartners(initialPartners))
   const initialDeadline = toLocalInput(defaultValues.earlyDeadline)
 
   const form = useForm<Values>({
@@ -168,6 +206,8 @@ export function SponsorshipSettingsSection({
     defaultValues: {
       enabled: defaultValues.enabled,
       title: defaultValues.title,
+      businessContact: defaultValues.businessContact,
+      partners: initialPartners,
       goalEnabled: defaultValues.goalEnabled,
       goalName: defaultValues.goalName,
       goalTargetMoney: defaultValues.goalTargetMoney,
@@ -181,12 +221,23 @@ export function SponsorshipSettingsSection({
       earlyDeadline: initialDeadline,
       continuousWindowMonths: defaultValues.continuousWindowMonths,
       continuousMinCount: defaultValues.continuousMinCount,
+      majorSupporterMinMoney: defaultValues.majorSupporterMinMoney,
+      cumulativeSupporterMinMoney: defaultValues.cumulativeSupporterMinMoney,
     },
   })
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'tiers',
+  })
+
+  const {
+    fields: partnerFields,
+    append: appendPartner,
+    remove: removePartner,
+  } = useFieldArray({
+    control: form.control,
+    name: 'partners',
   })
 
   const { isDirty, isSubmitting } = form.formState
@@ -202,6 +253,14 @@ export function SponsorshipSettingsSection({
 
     push('enabled', String(values.enabled), String(defaultValues.enabled))
     push('title', values.title, defaultValues.title)
+    push(
+      'business_contact',
+      values.businessContact,
+      defaultValues.businessContact
+    )
+
+    const serializedPartners = JSON.stringify(toServerPartners(values.partners))
+    push('partners', serializedPartners, initialPartnersJson)
     push('goal_enabled', String(values.goalEnabled), String(defaultValues.goalEnabled))
     push('goal_name', values.goalName, defaultValues.goalName)
     push(
@@ -245,6 +304,16 @@ export function SponsorshipSettingsSection({
       'continuous_min_count',
       String(values.continuousMinCount),
       String(defaultValues.continuousMinCount)
+    )
+    push(
+      'major_supporter_min_money',
+      String(values.majorSupporterMinMoney),
+      String(defaultValues.majorSupporterMinMoney)
+    )
+    push(
+      'cumulative_supporter_min_money',
+      String(values.cumulativeSupporterMinMoney),
+      String(defaultValues.cumulativeSupporterMinMoney)
     )
 
     if (updates.length === 0) {
@@ -308,6 +377,114 @@ export function SponsorshipSettingsSection({
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name='businessContact'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Contact info')}</FormLabel>
+                    <FormControl>
+                      <Input placeholder='contact@example.com' {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'Email or link shown at the bottom of the page. Leave empty to hide.'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className='space-y-4'>
+                <div>
+                  <FormLabel>{t('Partners')}</FormLabel>
+                  <FormDescription>
+                    {t(
+                      'Shown in a row of three slots. Empty slots invite new partners.'
+                    )}
+                  </FormDescription>
+                </div>
+                <div className='space-y-3'>
+                  {partnerFields.map((field, index) => (
+                    <div
+                      key={field.id}
+                      className='grid gap-3 sm:grid-cols-[1fr_1.5fr_1fr_auto]'
+                    >
+                      <FormField
+                        control={form.control}
+                        name={`partners.${index}.name`}
+                        render={({ field: inputField }) => (
+                          <FormItem>
+                            <FormLabel className='sm:sr-only'>
+                              {t('Name')}
+                            </FormLabel>
+                            <FormControl>
+                              <Input {...inputField} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`partners.${index}.url`}
+                        render={({ field: inputField }) => (
+                          <FormItem>
+                            <FormLabel className='sm:sr-only'>
+                              {t('URL')}
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder='https://example.com'
+                                {...inputField}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`partners.${index}.note`}
+                        render={({ field: inputField }) => (
+                          <FormItem>
+                            <FormLabel className='sm:sr-only'>
+                              {t('Note')}
+                            </FormLabel>
+                            <FormControl>
+                              <Input {...inputField} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type='button'
+                        variant='ghost'
+                        size='icon'
+                        onClick={() => removePartner(index)}
+                        aria-label={t('Delete')}
+                        className='self-start'
+                      >
+                        <Trash2 className='h-4 w-4' />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='sm'
+                  onClick={() =>
+                    appendPartner({ name: '', url: '', note: '' })
+                  }
+                >
+                  <Plus className='h-4 w-4' />
+                  {t('Add partner')}
+                </Button>
+              </div>
 
               <FormField
                 control={form.control}
@@ -613,6 +790,46 @@ export function SponsorshipSettingsSection({
                       <FormDescription>
                         {t(
                           'A single recent support is not ongoing — it needs a count floor to mean anything'
+                        )}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name='majorSupporterMinMoney'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {t('Major supporter minimum amount')}
+                      </FormLabel>
+                      <FormControl>
+                        <Input type='number' min={0} {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        {t(
+                          'A single payment at or above this amount earns the badge. 0 means it is not given out.'
+                        )}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name='cumulativeSupporterMinMoney'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {t('Cumulative supporter minimum amount')}
+                      </FormLabel>
+                      <FormControl>
+                        <Input type='number' min={0} {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        {t(
+                          'Total support at or above this amount earns the badge. 0 means it is not given out.'
                         )}
                       </FormDescription>
                       <FormMessage />
