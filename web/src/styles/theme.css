@@ -99,9 +99,9 @@ For commercial licensing, please contact support@quantumnous.com
   --app-header-height: 3rem;
   /* Static build-channel fallback consumed when JS hasn't booted yet. */
   --app-rev: '2k6e8r7p';
-  /* Auto starts with the browser font, including before JS applies the
-   * saved preference. Explicit Sans selects Public Sans in theme-presets.css. */
-  --font-ui-sans: sans-serif;
+  /* Public Sans is the default body font, including the first paint before
+   * JS applies the saved preference; the font axis can switch to serif. */
+  --font-ui-sans: var(--font-public-sans);
   --font-body: var(--font-ui-sans);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);

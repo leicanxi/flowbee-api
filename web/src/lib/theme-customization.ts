@@ -159,8 +159,8 @@ export const CONTENT_LAYOUT_VALUES: ReadonlySet<ContentLayout> = new Set([
  * Preset → default font mapping. Used by the provider to resolve the user's
  * `font: 'default'` preference against the active preset.
  *
- * Presets without a font override use the browser's sans-serif. Public
- * Sans is reserved for an explicit user choice.
+ * Presets without a font override fall back to Public Sans so the console
+ * keeps its pre-merge typeface unless the user picks otherwise.
  */
 export const PRESET_DEFAULT_FONT: Partial<
   Record<ThemePreset, ResolvedThemeFont>
@@ -179,7 +179,7 @@ export function resolveThemeFont(
   preset: ThemePreset
 ): ResolvedThemeFont {
   if (font === 'default') {
-    return PRESET_DEFAULT_FONT[preset] ?? 'system'
+    return PRESET_DEFAULT_FONT[preset] ?? 'sans'
   }
   return font
 }
