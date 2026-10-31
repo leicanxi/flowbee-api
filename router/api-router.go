@@ -85,6 +85,8 @@ func SetApiRouter(router *gin.Engine) {
 		{
 			userRoute.POST("/auth/refresh", middleware.SessionCookieOriginGuard(), middleware.CriticalRateLimit(), middleware.DisableCache(), controller.RefreshAuth)
 			userRoute.POST("/auth/logout", middleware.SessionCookieOriginGuard(), middleware.CriticalRateLimit(), middleware.DisableCache(), controller.AuthLogout)
+			// Multi-tenant "log in with FlowBee" entry point (browser navigation, no origin guard).
+			userRoute.GET("/sso/authorize", middleware.DisableCache(), controller.GetSSOAuthorize)
 			userRoute.POST("/register", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, middleware.CaptchaCheck(), controller.Register)
 			userRoute.GET("/login/encryption-key", middleware.DisableCache(), controller.GetPasswordEncryptionKey)
 			userRoute.POST("/login", middleware.CriticalRateLimit(), middleware.DisableCache(), anonymousRequestBodyLimit, middleware.CaptchaCheck(), controller.Login)
