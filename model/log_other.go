@@ -18,11 +18,14 @@ const (
 
 // legacySensitiveLogOtherKeys are historical top-level fields that must never
 // be written via SetPublic and must be stripped from user-visible projections.
+// response_model was briefly stored top-level before moving under admin_info;
+// the entry keeps those existing rows hidden from log owners.
 var legacySensitiveLogOtherKeys = []string{
 	"channel_id",
 	"channel_name",
 	"channel_type",
 	"reject_reason",
+	"response_model",
 }
 
 type logOtherVisibility int

@@ -147,6 +147,13 @@ export interface LogOtherData {
     // Reject / intercept reason (admin only)
     reject_reason?: string
     task_plugin?: TaskPluginInfo
+    // Upstream response-model observation (admin only): operators' channel
+    // detail that regular users never receive from the log APIs.
+    response_model?: {
+      requested_model: string
+      upstream_model: string
+      returned_model: string
+    }
   }
   root_info?: {
     task_plugin?: TaskPluginRuntimeInfo
@@ -205,8 +212,9 @@ export interface LogOtherData {
   cache_creation_ratio_12h?: number
   is_model_mapped?: boolean
   upstream_model_name?: string
-  // Diagnostic only. Whether the names disagree is derived in the UI via
-  // isResponseModelMismatch so old rows follow the current comparison rule.
+  // Legacy location of the response-model observation before it moved under
+  // admin_info. Kept so admins can still read historical rows; user-visible
+  // API projections strip it.
   response_model?: {
     requested_model: string
     upstream_model: string

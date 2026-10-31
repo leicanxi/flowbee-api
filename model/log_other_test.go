@@ -56,6 +56,7 @@ func TestLogOtherRejectsSensitivePublicFields(t *testing.T) {
 		"channel_name",
 		"channel_type",
 		"reject_reason",
+		"response_model",
 	} {
 		assert.False(t, other.SetPublic(key, "must-not-leak"), key)
 	}
@@ -81,4 +82,26 @@ func TestLogOtherJSONStringDoesNotMutateReceiver(t *testing.T) {
 
 	require.Equal(t, before, after)
 	require.Equal(t, first, second)
+}
+
+func TestFormatLogOtherJSONHidesResponseModelFromUsers(t *testing.T) {
+	// response_model moved under admin_info; rows stored before the move keep
+	// it top-level. Neither shape may reach the log owner projection.
+	stored := `{"response_model":{"requested_model":"a","upstream_model":"b","returned_model":"c"},` +
+		`"admin_info":{"response_model":{"requested_model":"a","upstream_model":"b","returned_model":"c"}},` +
+		`"frt":12}`
+
+	require.JSONEq(
+		t,
+		`{"frt":12}`,
+		formatLogOtherJSON(stored, logOtherVisibilityUser),
+	)
+
+	require.JSONEq(
+		t,
+		`{"response_model":{"requested_model":"a","upstream_model":"b","returned_model":"c"},`+
+			`"admin_info":{"response_model":{"requested_model":"a","upstream_model":"b","returned_model":"c"}},`+
+			`"frt":12}`,
+		formatLogOtherJSON(stored, logOtherVisibilityAdmin),
+	)
 }

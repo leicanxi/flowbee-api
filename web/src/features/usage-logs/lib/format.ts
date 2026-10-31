@@ -234,9 +234,14 @@ export function getResponseTimeColor(
 }
 
 /**
- * Format model name with mapping indicator
+ * Format model name with mapping indicator. The response-model observation is
+ * operators' info: the backend strips it from user projections, and `isAdmin`
+ * keeps the UI from reading it even if a payload ever carried it.
  */
-export function formatModelName(log: UsageLog): {
+export function formatModelName(
+  log: UsageLog,
+  isAdmin = false
+): {
   name: string
   isMapped: boolean
   actualModel?: string
@@ -248,12 +253,15 @@ export function formatModelName(log: UsageLog): {
     other?.upstream_model_name &&
     other.upstream_model_name !== ''
   )
+  const responseModel = isAdmin
+    ? other?.admin_info?.response_model ?? other?.response_model
+    : undefined
 
   return {
     name: log.model_name,
     isMapped,
     actualModel: isMapped ? other.upstream_model_name : undefined,
-    responseModel: other?.response_model,
+    responseModel,
   }
 }
 

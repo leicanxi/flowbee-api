@@ -26,6 +26,8 @@ import { render, screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 
+import { useAuthStore } from '@/stores/auth-store'
+
 import { usageLogSchema, type UsageLog } from '../../data/schema'
 import { useCommonLogsColumns } from '../columns/common-logs-columns'
 import { UsageLogsMobileList } from '../usage-logs-mobile-card'
@@ -84,6 +86,11 @@ function Fixture(props: {
 }
 
 function renderLogs(props: Parameters<typeof Fixture>[0] = {}) {
+  useAuthStore.getState().auth.setUser({
+    id: 1,
+    username: 'admin',
+    role: props.admin === false ? 1 : 10,
+  })
   return render(
     <QueryClientProvider
       client={
@@ -124,6 +131,39 @@ it('shows model mismatch evidence when tapping the mobile model badge', async ()
   ).toBeVisible()
   expect(within(dialog).getByText('mapped-model')).toBeVisible()
   expect(within(dialog).getByText('unexpected-model')).toBeVisible()
+})
+
+it('hides the response-model observation from regular users', () => {
+  renderLogs({
+    admin: false,
+    logs: [
+      {
+        ...log,
+        other: JSON.stringify({
+          response_model: {
+            requested_model: longName,
+            upstream_model: 'mapped-model',
+            returned_model: 'unexpected-model',
+          },
+          admin_info: {
+            response_model: {
+              requested_model: longName,
+              upstream_model: 'mapped-model',
+              returned_model: 'unexpected-model',
+            },
+          },
+        }),
+      },
+    ],
+  })
+  expect(
+    screen.getByRole('button', { name: `Model: ${longName}` })
+  ).toBeVisible()
+  expect(
+    screen.queryByRole('button', {
+      name: `Model: ${longName}, Response model: unexpected-model`,
+    })
+  ).not.toBeInTheDocument()
 })
 
 it('opens long channel text on tap and copies the complete value', async () => {

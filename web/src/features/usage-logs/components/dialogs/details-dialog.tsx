@@ -521,6 +521,11 @@ export function DetailsDialog(props: DetailsDialogProps) {
   const { t } = useTranslation()
   const { copiedText, copyToClipboard } = useCopyToClipboard({ notify: false })
   const other = parseLogOther(props.log.other)
+  // Operators' channel detail: admins read the admin_info shape (or the
+  // top-level shape stored by older rows); users never see it.
+  const responseModelObservation = props.isAdmin
+    ? other?.admin_info?.response_model ?? other?.response_model
+    : undefined
   const typeConfig = getLogTypeConfig(props.log.type)
 
   const isViolation = isViolationFeeLog(other)
@@ -1182,13 +1187,13 @@ export function DetailsDialog(props: DetailsDialogProps) {
           />
         )}
 
-        {other?.response_model && (
+        {responseModelObservation && (
           <DetailSection label={t('Response Model')}>
-            <ResponseModelDetails observation={other.response_model} />
+            <ResponseModelDetails observation={responseModelObservation} />
           </DetailSection>
         )}
         {/* Model mapping for logs without response observations */}
-        {!other?.response_model &&
+        {!responseModelObservation &&
           other?.is_model_mapped &&
           other?.upstream_model_name && (
             <DetailSection label={t('Model Mapping')}>
