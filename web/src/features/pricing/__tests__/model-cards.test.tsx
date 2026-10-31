@@ -742,14 +742,14 @@ describe('model cards', () => {
     expect(spans[1]).toHaveClass('bg-red-500')
   })
 
-  it('shows the latest 24 valid samples without requiring hourly window metadata or mutating the series', () => {
+  it('shows the latest 12 valid samples without requiring hourly window metadata or mutating the series', () => {
     const recentSeries = [
       { ts: 0, success_rate: 0 },
-      ...Array.from({ length: 24 }, (_, index) => ({
+      ...Array.from({ length: 14 }, (_, index) => ({
         ts: (index + 1) * 7200,
         success_rate: 100,
       })),
-      { ts: 25 * 7200, success_rate: Number.NaN },
+      { ts: 15 * 7200, success_rate: Number.NaN },
     ].reverse()
     const originalSeries = [...recentSeries]
     render(
@@ -770,7 +770,7 @@ describe('model cards', () => {
         name: 'Success rate',
       }).children,
     ]
-    expect(spans).toHaveLength(24)
+    expect(spans).toHaveLength(12)
     spans.forEach((sample) => {
       expect(sample).toHaveClass('bg-emerald-500')
     })

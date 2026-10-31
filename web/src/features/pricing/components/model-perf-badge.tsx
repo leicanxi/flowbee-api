@@ -40,7 +40,7 @@ export interface ModelPerfBadgeProps extends React.HTMLAttributes<HTMLDivElement
   perf: ModelPerfBadgeData | undefined
 }
 
-const STATUS_SAMPLE_LIMIT = 24
+const STATUS_SAMPLE_LIMIT = 12
 
 export const ModelPerfBadge = memo(function ModelPerfBadge(
   props: ModelPerfBadgeProps
@@ -80,17 +80,17 @@ export const ModelPerfBadge = memo(function ModelPerfBadge(
     <div
       aria-label={t('Performance metrics for the last 24 hours')}
       className={cn(
-        'flex w-full min-w-0 items-center justify-between gap-3',
+        'flex w-full min-w-0 flex-wrap items-center justify-between gap-3',
         props.className
       )}
     >
-      <dl className='flex min-w-0 items-start gap-5 text-xs tabular-nums'>
-        <div className='w-24 shrink-0'>
+      <dl className='flex items-start gap-5 text-xs tabular-nums'>
+        <div className='shrink-0'>
           <dt
             title={t(
               'Success rate excludes business rejections and includes the current partial hour.'
             )}
-            className='text-muted-foreground flex items-center justify-between gap-1 text-[10px] leading-4'
+            className='text-muted-foreground flex items-center gap-2 text-[10px] leading-4'
           >
             <span className='text-muted-foreground/55'>{t('Status')}</span>
             <span className='text-muted-foreground/80 font-mono text-xs leading-4 whitespace-nowrap'>
@@ -101,7 +101,7 @@ export const ModelPerfBadge = memo(function ModelPerfBadge(
             role='img'
             aria-label={statusLabel}
             title={statusLabel}
-            className='mt-1 flex h-3 w-24 items-center gap-px'
+            className='mt-1 flex h-3 items-center gap-px'
           >
             {statusSamples.length > 0 ? (
               statusSamples.map((sample) => (
@@ -109,7 +109,7 @@ export const ModelPerfBadge = memo(function ModelPerfBadge(
                   key={sample.ts}
                   aria-hidden
                   className={cn(
-                    'h-full w-[3px] shrink-0 rounded-xs',
+                    'h-full w-[5px] shrink-0 rounded-xs',
                     getSuccessRateDotClass(sample.success_rate)
                   )}
                 />
