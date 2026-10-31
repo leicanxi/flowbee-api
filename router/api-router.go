@@ -85,8 +85,6 @@ func SetApiRouter(router *gin.Engine) {
 		{
 			userRoute.POST("/auth/refresh", middleware.SessionCookieOriginGuard(), middleware.CriticalRateLimit(), middleware.DisableCache(), controller.RefreshAuth)
 			userRoute.POST("/auth/logout", middleware.SessionCookieOriginGuard(), middleware.CriticalRateLimit(), middleware.DisableCache(), controller.AuthLogout)
-			// Multi-tenant "log in with FlowBee" entry point (browser navigation, no origin guard).
-			userRoute.GET("/sso/authorize", middleware.DisableCache(), controller.GetSSOAuthorize)
 			userRoute.POST("/register", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, middleware.CaptchaCheck(), controller.Register)
 			userRoute.GET("/login/encryption-key", middleware.DisableCache(), controller.GetPasswordEncryptionKey)
 			userRoute.POST("/login", middleware.CriticalRateLimit(), middleware.DisableCache(), anonymousRequestBodyLimit, middleware.CaptchaCheck(), controller.Login)
@@ -172,6 +170,9 @@ func SetApiRouter(router *gin.Engine) {
 				// Octop 单点登录（出站签名者）：Octop 登录页把浏览器整页送到
 				// /sso/octop 中转页，由该页取这里的签名地址再跳回 Octop 回调。
 				selfRoute.GET("/octop_sso", middleware.DisableCache(), controller.GetOctopSSOURL)
+				// 多租户单点登录（login with FlowBee）：前端 /sso/$client 中转页带登录态取签名
+				// 回调地址后跳走。client 与回调都来自服务端注册表（SSO_CLIENTS env）。
+				selfRoute.GET("/sso/ticket", middleware.DisableCache(), controller.GetSSOTicketURL)
 				// 导出接口挂在 self 组并单独挂 AdminAuth，而不是写进 adminRoute：
 				// adminRoute 下混的是用户管理类路由，导出属于活动运营工具，
 				// 和它们放一起容易在后续维护中被误改权限。权限由 AdminAuth 中间件保证。

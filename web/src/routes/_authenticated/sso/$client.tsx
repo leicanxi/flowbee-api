@@ -8,24 +8,29 @@ License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
-import { OctopSso } from '@/features/octop-sso'
+import { SsoRelay } from '@/features/sso-relay'
 
 const searchSchema = z.object({
   state: z.string().optional().catch(''),
 })
 
-export const Route = createFileRoute('/_authenticated/sso/octop')({
+export const Route = createFileRoute('/_authenticated/sso/$client')({
   validateSearch: searchSchema,
-  component: OctopSso,
+  component: SsoRelayRoute,
 })
+
+function SsoRelayRoute() {
+  const { client } = Route.useParams()
+  return <SsoRelay client={client} />
+}

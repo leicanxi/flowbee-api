@@ -50,7 +50,7 @@ import { Route as AuthenticatedPlaygroundIndexRouteImport } from './routes/_auth
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
 import { Route as AuthenticatedRedemptionCodesIndexRouteImport } from './routes/_authenticated/redemption-codes/index'
 import { Route as AuthenticatedSecurityIndexRouteImport } from './routes/_authenticated/security/index'
-import { Route as AuthenticatedSsoOctopRouteImport } from './routes/_authenticated/sso/octop'
+import { Route as AuthenticatedSsoClientRouteImport } from './routes/_authenticated/sso/$client'
 import { Route as AuthenticatedSubscriptionsIndexRouteImport } from './routes/_authenticated/subscriptions/index'
 import { Route as AuthenticatedSystemInfoIndexRouteImport } from './routes/_authenticated/system-info/index'
 import { Route as AuthenticatedSystemSettingsIndexRouteImport } from './routes/_authenticated/system-settings/index'
@@ -294,9 +294,9 @@ const AuthenticatedSecurityIndexRoute =
     path: '/security/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedSsoOctopRoute = AuthenticatedSsoOctopRouteImport.update({
-  id: '/sso/octop',
-  path: '/sso/octop',
+const AuthenticatedSsoClientRoute = AuthenticatedSsoClientRouteImport.update({
+  id: '/sso/$client',
+  path: '/sso/$client',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSubscriptionsIndexRoute =
@@ -484,7 +484,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/$section': typeof AuthenticatedDashboardSectionRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/models/$section': typeof AuthenticatedModelsSectionRoute
-  '/sso/octop': typeof AuthenticatedSsoOctopRoute
+  '/sso/$client': typeof AuthenticatedSsoClientRoute
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/usage-logs/audit': typeof AuthenticatedUsageLogsAuditRoute
   '/channels/': typeof AuthenticatedChannelsIndexRoute
@@ -551,7 +551,7 @@ export interface FileRoutesByTo {
   '/dashboard/$section': typeof AuthenticatedDashboardSectionRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/models/$section': typeof AuthenticatedModelsSectionRoute
-  '/sso/octop': typeof AuthenticatedSsoOctopRoute
+  '/sso/$client': typeof AuthenticatedSsoClientRoute
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/usage-logs/audit': typeof AuthenticatedUsageLogsAuditRoute
   '/channels': typeof AuthenticatedChannelsIndexRoute
@@ -622,7 +622,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard/$section': typeof AuthenticatedDashboardSectionRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/_authenticated/models/$section': typeof AuthenticatedModelsSectionRoute
-  '/_authenticated/sso/octop': typeof AuthenticatedSsoOctopRoute
+  '/_authenticated/sso/$client': typeof AuthenticatedSsoClientRoute
   '/_authenticated/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/_authenticated/usage-logs/audit': typeof AuthenticatedUsageLogsAuditRoute
   '/_authenticated/channels/': typeof AuthenticatedChannelsIndexRoute
@@ -692,7 +692,7 @@ export interface FileRouteTypes {
     | '/dashboard/$section'
     | '/errors/$error'
     | '/models/$section'
-    | '/sso/octop'
+    | '/sso/$client'
     | '/usage-logs/$section'
     | '/usage-logs/audit'
     | '/channels/'
@@ -759,7 +759,7 @@ export interface FileRouteTypes {
     | '/dashboard/$section'
     | '/errors/$error'
     | '/models/$section'
-    | '/sso/octop'
+    | '/sso/$client'
     | '/usage-logs/$section'
     | '/usage-logs/audit'
     | '/channels'
@@ -829,7 +829,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard/$section'
     | '/_authenticated/errors/$error'
     | '/_authenticated/models/$section'
-    | '/_authenticated/sso/octop'
+    | '/_authenticated/sso/$client'
     | '/_authenticated/usage-logs/$section'
     | '/_authenticated/usage-logs/audit'
     | '/_authenticated/channels/'
@@ -1177,11 +1177,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSecurityIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/sso/octop': {
-      id: '/_authenticated/sso/octop'
-      path: '/sso/octop'
-      fullPath: '/sso/octop'
-      preLoaderRoute: typeof AuthenticatedSsoOctopRouteImport
+    '/_authenticated/sso/$client': {
+      id: '/_authenticated/sso/$client'
+      path: '/sso/$client'
+      fullPath: '/sso/$client'
+      preLoaderRoute: typeof AuthenticatedSsoClientRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/subscriptions/': {
@@ -1466,7 +1466,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardSectionRoute: typeof AuthenticatedDashboardSectionRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
   AuthenticatedModelsSectionRoute: typeof AuthenticatedModelsSectionRoute
-  AuthenticatedSsoOctopRoute: typeof AuthenticatedSsoOctopRoute
+  AuthenticatedSsoClientRoute: typeof AuthenticatedSsoClientRoute
   AuthenticatedUsageLogsSectionRoute: typeof AuthenticatedUsageLogsSectionRoute
   AuthenticatedUsageLogsAuditRoute: typeof AuthenticatedUsageLogsAuditRoute
   AuthenticatedChannelsIndexRoute: typeof AuthenticatedChannelsIndexRoute
@@ -1496,7 +1496,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardSectionRoute: AuthenticatedDashboardSectionRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
   AuthenticatedModelsSectionRoute: AuthenticatedModelsSectionRoute,
-  AuthenticatedSsoOctopRoute: AuthenticatedSsoOctopRoute,
+  AuthenticatedSsoClientRoute: AuthenticatedSsoClientRoute,
   AuthenticatedUsageLogsSectionRoute: AuthenticatedUsageLogsSectionRoute,
   AuthenticatedUsageLogsAuditRoute: AuthenticatedUsageLogsAuditRoute,
   AuthenticatedChannelsIndexRoute: AuthenticatedChannelsIndexRoute,

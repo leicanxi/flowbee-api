@@ -1,10 +1,10 @@
 package controller
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"testing"
 	"time"
 
@@ -25,24 +25,14 @@ const (
 	ssoTestClients  = `{"sing":{"name":"广场","secret":"sso-test-client-secret","callback":"https://voice-models.example/v1/auth/callback"}}`
 )
 
-// prepareSSOEnv swaps in an in-memory DB with one enabled user and returns the
-// raw refresh cookie value of a live session.
-func prepareSSOEnv(t *testing.T) (*model.User, string) {
+func prepareSSOUser(t *testing.T) *model.User {
 	t.Helper()
 	previousDB := model.DB
-	previousRedis := common.RedisEnabled
-	previousSecret := common.SessionSecret
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&model.User{}, &model.UserSession{}))
+	require.NoError(t, db.AutoMigrate(&model.User{}))
 	model.DB = db
-	common.RedisEnabled = false
-	common.SessionSecret = "sso-authorize-test-secret"
-	t.Cleanup(func() {
-		model.DB = previousDB
-		common.RedisEnabled = previousRedis
-		common.SessionSecret = previousSecret
-	})
+	t.Cleanup(func() { model.DB = previousDB })
 
 	user := &model.User{
 		Username: "sso-user", Password: "unused", DisplayName: "SSO 用户",
@@ -50,52 +40,41 @@ func prepareSSOEnv(t *testing.T) (*model.User, string) {
 		Group: "default", AuthVersion: 1, Email: "sso@example.com",
 	}
 	require.NoError(t, db.Create(user).Error)
-	bundle, err := service.CreateLoginSession(user.Id, "password", "127.0.0.1", "test-agent")
-	require.NoError(t, err)
-	return user, bundle.RefreshToken
+	return user
 }
 
-func ssoRequest(target string, refresh string) (*gin.Context, *httptest.ResponseRecorder) {
+func ssoTicketRequest(t *testing.T, userID int, target string) *httptest.ResponseRecorder {
+	t.Helper()
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodGet, target, nil)
-	if refresh != "" {
-		c.Request.AddCookie(&http.Cookie{Name: service.RefreshCookieName, Value: refresh})
+	c.Set("id", userID) // what middleware.UserAuth() provides
+	GetSSOTicketURL(c)
+	return recorder
+}
+
+func TestSSOTicketReturnsSignedCallbackURL(t *testing.T) {
+	user := prepareSSOUser(t)
+	t.Setenv("SSO_CLIENTS", ssoTestClients)
+	gin.SetMode(gin.TestMode)
+
+	recorder := ssoTicketRequest(t, user.Id, "/api/user/sso/ticket?client=sing&state=state-1")
+	require.Equal(t, http.StatusOK, recorder.Code)
+
+	body := recorder.Body.String()
+	assert.Contains(t, body, `"success":true`)
+
+	var payload struct {
+		Data struct {
+			URL string `json:"url"`
+		} `json:"data"`
 	}
-	return c, recorder
-}
-
-func TestSSOAuthorizeRedirectsAnonymousVisitorToSignIn(t *testing.T) {
-	prepareSSOEnv(t)
-	t.Setenv("SSO_CLIENTS", ssoTestClients)
-	gin.SetMode(gin.TestMode)
-
-	c, recorder := ssoRequest("/api/user/sso/authorize?client=sing&state=state-1", "")
-	GetSSOAuthorize(c)
-
-	require.Equal(t, http.StatusFound, recorder.Code)
-	location := recorder.Header().Get("Location")
-	assert.True(t, strings.HasPrefix(location, "/sign-in?redirect="), location)
-	back, err := url.QueryUnescape(strings.TrimPrefix(location, "/sign-in?redirect="))
-	require.NoError(t, err)
-	assert.Equal(t, "/api/user/sso/authorize?client=sing&state=state-1", back)
-}
-
-func TestSSOAuthorizeIssuesTicketForLoggedInUser(t *testing.T) {
-	_, refreshToken := prepareSSOEnv(t)
-	t.Setenv("SSO_CLIENTS", ssoTestClients)
-	gin.SetMode(gin.TestMode)
-
-	c, recorder := ssoRequest("/api/user/sso/authorize?client=sing&state=state-2", refreshToken)
-	GetSSOAuthorize(c)
-
-	require.Equal(t, http.StatusFound, recorder.Code)
-	location := recorder.Header().Get("Location")
-	target, err := url.Parse(location)
+	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &payload))
+	target, err := url.Parse(payload.Data.URL)
 	require.NoError(t, err)
 	assert.Equal(t, "voice-models.example", target.Host)
 	assert.Equal(t, "/v1/auth/callback", target.Path)
-	assert.Equal(t, "state-2", target.Query().Get("state"))
+	assert.Equal(t, "state-1", target.Query().Get("state"))
 
 	code := target.Query().Get("code")
 	require.NotEmpty(t, code)
@@ -110,24 +89,17 @@ func TestSSOAuthorizeIssuesTicketForLoggedInUser(t *testing.T) {
 	assert.Equal(t, "sing", claims["aud"])
 	exp := int64(claims["exp"].(float64))
 	assert.LessOrEqual(t, exp-time.Now().Unix(), int64(60))
-
-	// The session refresh rotates the cookie; the browser must get the new one.
-	assert.Contains(t, recorder.Header().Get("Set-Cookie"), service.RefreshCookieName)
 }
 
-func TestSSOAuthorizeRejectsUnknownClientAndBadState(t *testing.T) {
-	prepareSSOEnv(t)
+func TestSSOTicketRejectsUnknownClientAndBadState(t *testing.T) {
+	user := prepareSSOUser(t)
 	t.Setenv("SSO_CLIENTS", ssoTestClients)
 	gin.SetMode(gin.TestMode)
 
-	c, recorder := ssoRequest("/api/user/sso/authorize?client=unknown&state=state-3", "")
-	GetSSOAuthorize(c)
-	assert.Equal(t, http.StatusOK, recorder.Code)
+	recorder := ssoTicketRequest(t, user.Id, "/api/user/sso/ticket?client=unknown&state=state-2")
 	assert.Contains(t, recorder.Body.String(), "单点登录应用未配置")
 
-	c, recorder = ssoRequest("/api/user/sso/authorize?client=sing&state=bad%20state", "")
-	GetSSOAuthorize(c)
-	assert.Equal(t, http.StatusOK, recorder.Code)
+	recorder = ssoTicketRequest(t, user.Id, "/api/user/sso/ticket?client=sing&state=bad%20state")
 	assert.Contains(t, recorder.Body.String(), "state")
 }
 

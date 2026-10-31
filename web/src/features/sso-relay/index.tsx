@@ -8,19 +8,18 @@ License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-// Octop 单点登录中转页。
+// 多租户单点登录中转页（login with FlowBee）。
 //
-// 方向与反馈中心相反：那边的入口在本站、用户已经登录；这边是 Octop 的登录页把
-// 浏览器整页送过来。本站会话已在（否则 _authenticated 会先弹登录页），所以本页
-// 只做三件事：取 state → 换签名地址 → 立即跳走。
+// 浏览器带着 ?state=… 整页跳到 /sso/$client：本站会话已在（否则 _authenticated
+// 会先弹登录页并回跳），所以本页只做三件事：取 state → 换签名回调地址 → 立即跳走。
 import { useSearch } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,35 +27,35 @@ import { useTranslation } from 'react-i18next'
 import { ErrorState } from '@/components/error-state'
 import { LoadingState } from '@/components/loading-state'
 
-import { getOctopSsoUrl } from './api'
+import { getSsoTicketUrl } from './api'
 
-type OctopSsoStage = 'checking' | 'error'
+type SsoRelayStage = 'checking' | 'error'
 
-export function OctopSso() {
+export function SsoRelay({ client }: { client: string }) {
   const { t } = useTranslation()
-  const { state } = useSearch({ from: '/_authenticated/sso/octop' })
-  const [stage, setStage] = useState<OctopSsoStage>('checking')
+  const { state } = useSearch({ from: '/_authenticated/sso/$client' })
+  const [stage, setStage] = useState<SsoRelayStage>('checking')
 
   useEffect(() => {
     let cancelled = false
 
-    const openOctop = async () => {
-      // state 由 Octop 生成，缺了就无法完成它的一次性校验，只能当失败处理。
+    const openClient = async () => {
+      // state 由依赖方生成，缺了就无法完成它的一次性校验，只能当失败处理。
       if (!state) {
         // eslint-disable-next-line no-console
-        console.error('Octop SSO handoff is missing its state parameter.')
+        console.error('SSO handoff is missing its state parameter.')
         setStage('error')
         return
       }
 
-      const res = await getOctopSsoUrl(state)
+      const res = await getSsoTicketUrl(client, state)
       if (cancelled) return
 
       const url = res?.data?.url
       if (!res?.success || url == null || url === '') {
-        // 失败原因（未配置密钥之类）对用户没有行动价值，只留给排查用。
+        // 失败原因（未配置应用、回调非法之类）对用户没有行动价值，只留给排查用。
         // eslint-disable-next-line no-console
-        console.error('Failed to obtain the Octop sso url:', res?.message)
+        console.error('Failed to obtain the SSO callback url:', res?.message)
         setStage('error')
         return
       }
@@ -66,22 +65,22 @@ export function OctopSso() {
       window.location.replace(url)
     }
 
-    openOctop().catch((error: unknown) => {
+    openClient().catch((error: unknown) => {
       if (cancelled) return
       // eslint-disable-next-line no-console
-      console.error('Failed to request the Octop sso url:', error)
+      console.error('Failed to request the SSO callback url:', error)
       setStage('error')
     })
 
     return () => {
       cancelled = true
     }
-  }, [state])
+  }, [client, state])
 
   if (stage === 'checking') {
     return (
       <div className='flex min-h-[60vh] items-center justify-center px-4'>
-        <LoadingState message={t('Signing you in with Octop…')} />
+        <LoadingState message={t('Signing you in…')} />
       </div>
     )
   }
@@ -89,9 +88,9 @@ export function OctopSso() {
   return (
     <div className='flex min-h-[60vh] items-center justify-center px-4'>
       <ErrorState
-        title={t('Could not sign you in with Octop')}
+        title={t('Could not sign you in')}
         description={t(
-          'Octop single sign-on is temporarily unavailable. Please try again later.'
+          'Single sign-on is temporarily unavailable. Please try again later.'
         )}
         onRetry={() => window.location.reload()}
       />
