@@ -83,7 +83,7 @@ func TestSingPluginUsageFacts(t *testing.T) {
 		expected map[string]any
 	}{
 		{"requested", map[string]any{"duration": 60}, map[string]any{"seconds": float64(60), "cached": false}},
-		{"clamps long", map[string]any{"duration": 999}, map[string]any{"seconds": float64(60), "cached": false}},
+		{"clamps long", map[string]any{"duration": 999}, map[string]any{"seconds": float64(120), "cached": false}},
 		{"defaults missing", map[string]any{}, map[string]any{"seconds": float64(25), "cached": false}},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -119,6 +119,31 @@ func TestSingPluginNativeStatusMapsHostFailure(t *testing.T) {
 	assert.Equal(t, "failed", view["status"])
 	assert.Equal(t, "no song found", view["error"])
 	assert.Equal(t, "task_public", view["id"])
+}
+
+func TestSingPluginNativeDecodeResolvesModel(t *testing.T) {
+	plugin := loadSingPlugin(t)
+	body := map[string]any{"kind": "json", "value": map[string]any{"song": "雨爱", "duration": 30}}
+
+	// Native routes carry no pinned model: the body's model wins...
+	value, err := plugin.Engine.CallPath(t.Context(), "native", []string{"decodeSubmit"}, map[string]any{
+		"body": map[string]any{"kind": "json", "value": map[string]any{"model": "sing-song", "song": "雨爱"}},
+	})
+	require.NoError(t, err)
+	decoded := singRoundTrip(t, value)
+	assert.Equal(t, "sing-song", decoded["model"])
+
+	// ...and without one the plugin's only model is used.
+	value, err = plugin.Engine.CallPath(t.Context(), "native", []string{"decodeSubmit"}, map[string]any{"body": body})
+	require.NoError(t, err)
+	decoded = singRoundTrip(t, value)
+	assert.Equal(t, "sing-song", decoded["model"])
+	assert.Equal(t, float64(30), plainMap(decoded["requestBody"])["duration"])
+}
+
+func plainMap(value any) map[string]any {
+	m, _ := value.(map[string]any)
+	return m
 }
 
 func TestSingPluginResponsesDecodeEchoesAlias(t *testing.T) {

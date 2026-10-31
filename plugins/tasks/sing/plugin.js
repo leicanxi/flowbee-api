@@ -13,7 +13,7 @@ export const meta = {
     en: "AI singing covers via the sing-gateway job API",
     zh: "通过 sing-gateway 任务接口生成 AI 翻唱",
   },
-  version: "1.0.0",
+  version: "1.0.1",
   author: { name: "leicanxi" },
   models: ["sing-song"],
   fetchMode: "per_task",
@@ -34,6 +34,7 @@ export const meta = {
   usageExamples: [
     { label: "25s", facts: { seconds: 25, cached: false } },
     { label: "60s", facts: { seconds: 60, cached: false } },
+    { label: "120s", facts: { seconds: 120, cached: false } },
     { label: "60s · cache", facts: { seconds: 60, cached: true } },
   ],
   protocols: [{ name: "openai_responses", supports: ["stream", "sync", "background"] }],
@@ -44,7 +45,7 @@ export const meta = {
 };
 
 const MIN_SECONDS = 5;
-const MAX_SECONDS = 60;
+const MAX_SECONDS = 120;
 const DEFAULT_SECONDS = 25;
 const STATUSES = {
   queued: "SUBMITTED",
@@ -115,6 +116,9 @@ function decodeSubmit(ctx) {
   const url = trimmed(body.url);
   const song = trimmed(body.song);
   if (!url && !song) throw new Error("song or url is required");
+  // Native routes receive no pinned model: read it from the request body and
+  // fall back to the plugin's only model.
+  const model = trimmed(body.model) || (ctx && trimmed(ctx.model)) || "sing-song";
   const requestBody = {};
   if (url) requestBody.url = url;
   else requestBody.song = song;
@@ -128,7 +132,7 @@ function decodeSubmit(ctx) {
     if (body[key] !== undefined && body[key] !== null && body[key] !== "") requestBody[key] = body[key];
   }
   requestBody.duration = clampSeconds(body.duration);
-  return { kind: "submit", model: ctx.model, requestBody: requestBody };
+  return { kind: "submit", model: model, requestBody: requestBody };
 }
 
 export function buildSubmitRequest(ctx) {
