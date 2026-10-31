@@ -40,7 +40,7 @@ export interface ModelPerfBadgeProps extends React.HTMLAttributes<HTMLDivElement
   perf: ModelPerfBadgeData | undefined
 }
 
-const STATUS_SAMPLE_LIMIT = 12
+const STATUS_SAMPLE_LIMIT = 6
 
 export const ModelPerfBadge = memo(function ModelPerfBadge(
   props: ModelPerfBadgeProps
@@ -51,12 +51,6 @@ export const ModelPerfBadge = memo(function ModelPerfBadge(
     ' t/s',
     't/s'
   )
-  const successRate = props.perf?.success_rate
-  const hasSuccessRate =
-    successRate != null &&
-    Number.isFinite(successRate) &&
-    successRate >= 0 &&
-    successRate <= 100
   const statusSamples = useMemo(
     () =>
       (props.perf?.recent_success_series ?? [])
@@ -90,12 +84,9 @@ export const ModelPerfBadge = memo(function ModelPerfBadge(
             title={t(
               'Success rate excludes business rejections and includes the current partial hour.'
             )}
-            className='text-muted-foreground flex items-center gap-2 text-[10px] leading-4'
+            className='text-muted-foreground/55 text-[10px] leading-4'
           >
-            <span className='text-muted-foreground/55'>{t('Status')}</span>
-            <span className='text-muted-foreground/80 font-mono text-xs leading-4 whitespace-nowrap'>
-              {hasSuccessRate ? `${successRate.toFixed(2)}%` : '—'}
-            </span>
+            {t('Status')}
           </dt>
           <dd
             role='img'

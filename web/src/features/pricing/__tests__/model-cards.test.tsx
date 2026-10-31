@@ -161,7 +161,7 @@ describe('model cards', () => {
     const metrics = screen.getByLabelText(
       'Performance metrics for the last 24 hours'
     )
-    expect(within(metrics).getAllByText('—')).toHaveLength(2)
+    expect(within(metrics).getAllByText('—')).toHaveLength(1)
     expect(within(metrics).getByText('—s')).toBeVisible()
     expect(within(metrics).getByText('—t/s')).toBeVisible()
     expect(within(metrics).queryByText(/100/)).not.toBeInTheDocument()
@@ -232,7 +232,7 @@ describe('model cards', () => {
         />
       </QueryClientProvider>
     )
-    await screen.findByText('99.80%')
+    await screen.findByText('1.20s')
     expect(request).toHaveBeenCalledWith('/api/perf-metrics/summary', {
       params: { hours: 24, recent_model: ['active-model', 'idle-model'] },
       paramsSerializer: { indexes: null },
@@ -250,7 +250,7 @@ describe('model cards', () => {
     expect(samples).toHaveLength(2)
     expect(samples[0]).toHaveClass('bg-red-500')
     expect(samples[1]).toHaveClass('bg-emerald-500')
-    expect(within(idle).getByText('—')).toBeVisible()
+    expect(within(idle).getByText('—s')).toBeVisible()
     expect(within(idle).getByText('—s')).toBeVisible()
     expect(within(idle).getByText('—t/s')).toBeVisible()
   })
@@ -308,29 +308,22 @@ describe('model cards', () => {
     ).not.toBeInTheDocument()
   })
 
-  it.each([
-    { success_rate: 0, expected: '0.00%' },
-    { success_rate: 99.8, expected: '99.80%' },
-    { success_rate: Number.NaN, expected: '—' },
-  ])(
-    'shows $expected for the reported request success rate $success_rate',
-    ({ success_rate, expected }) => {
-      render(
-        <ModelCard
-          model={pricingModel()}
-          onClick={vi.fn()}
-          perf={{ avg_latency_ms: 1200, avg_tps: 42, success_rate }}
-        />
-      )
-      const metrics = screen.getByLabelText(
-        'Performance metrics for the last 24 hours'
-      )
-      expect(within(metrics).getAllByText(expected)[0]).toBeVisible()
-      expect(within(metrics).getByText('Status')).toBeVisible()
-      expect(within(metrics).getByText('1.20s')).toBeVisible()
-      expect(within(metrics).getByText('42.0t/s')).toBeVisible()
-    }
-  )
+  it('renders the status strip without the summary success-rate number', () => {
+    render(
+      <ModelCard
+        model={pricingModel()}
+        onClick={vi.fn()}
+        perf={{ avg_latency_ms: 1200, avg_tps: 42, success_rate: 99.8 }}
+      />
+    )
+    const metrics = screen.getByLabelText(
+      'Performance metrics for the last 24 hours'
+    )
+    expect(within(metrics).getByText('Status')).toBeVisible()
+    expect(within(metrics).queryByText(/99\.8|%/)).not.toBeInTheDocument()
+    expect(within(metrics).getByText('1.20s')).toBeVisible()
+    expect(within(metrics).getByText('42.0t/s')).toBeVisible()
+  })
 
   it('keeps group and recharge pricing correct when changing the token unit, including a free cache price', () => {
     const props = {
@@ -612,7 +605,7 @@ describe('model cards', () => {
       within(
         screen.getByLabelText('Performance metrics for the last 24 hours')
       ).getAllByText(/^—/)
-    ).toHaveLength(4)
+    ).toHaveLength(3)
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: 'Details' }))
     expect(onModelClick).toHaveBeenCalledWith('example-model')
@@ -742,14 +735,14 @@ describe('model cards', () => {
     expect(spans[1]).toHaveClass('bg-red-500')
   })
 
-  it('shows the latest 12 valid samples without requiring hourly window metadata or mutating the series', () => {
+  it('shows the latest 6 valid samples without requiring hourly window metadata or mutating the series', () => {
     const recentSeries = [
       { ts: 0, success_rate: 0 },
-      ...Array.from({ length: 14 }, (_, index) => ({
+      ...Array.from({ length: 8 }, (_, index) => ({
         ts: (index + 1) * 7200,
         success_rate: 100,
       })),
-      { ts: 15 * 7200, success_rate: Number.NaN },
+      { ts: 9 * 7200, success_rate: Number.NaN },
     ].reverse()
     const originalSeries = [...recentSeries]
     render(
@@ -770,7 +763,7 @@ describe('model cards', () => {
         name: 'Success rate',
       }).children,
     ]
-    expect(spans).toHaveLength(12)
+    expect(spans).toHaveLength(6)
     spans.forEach((sample) => {
       expect(sample).toHaveClass('bg-emerald-500')
     })
