@@ -219,14 +219,26 @@ func TaskErrorWrapper(err error, code string, statusCode int, upstreamURLs ...st
 }
 
 // TaskErrorFromAPIError 将 PreConsumeBilling 返回的 NewAPIError 转换为 TaskError。
+//
+// 预扣费在选完渠道之后执行（换渠道要补预扣），所以它的失败天然落在「渠道错误」
+// 的位置上。但这里的失败绝大多数是本地拒绝——用户余额不足、订阅额度不足、模型
+// 价格未配置——上游一次都没被调用过。把它们当渠道故障会误禁用渠道（403 命中
+// AutomaticDisableStatusCodes）并白白重试 3 次。NewAPIError 上的 SkipRetry
+// 标记正是这个语义，必须原样带过去。
 func TaskErrorFromAPIError(apiErr *types.NewAPIError) *taskdto.TaskError {
 	if apiErr == nil {
 		return nil
 	}
-	return &taskdto.TaskError{
+	taskErr := &taskdto.TaskError{
 		Code:       string(apiErr.GetErrorCode()),
-		Message:    apiErr.Err.Error(),
+		Message:    apiErr.Error(),
 		StatusCode: apiErr.StatusCode,
 		Error:      apiErr.Err,
 	}
+	// LocalError 同时关掉两件事：不进 processChannelError（不禁用渠道、不记
+	// 渠道错误日志），以及不重试（decideTaskRetry 走 local_rejection 分支）。
+	if types.IsSkipRetryError(apiErr) {
+		taskErr.LocalError = true
+	}
+	return taskErr
 }

@@ -158,3 +158,34 @@ func withDebugEnabled(t *testing.T, enabled bool) {
 		common.DebugEnabled = oldDebug
 	})
 }
+
+// 预扣费失败发生在选完渠道之后，TaskError 必须自己带上「这是本地拒绝」的标记，
+// 否则 controller 会把它当渠道故障处理：403 命中 AutomaticDisableStatusCodes
+// 直接禁用渠道，并且按状态码再重试 3 次（2026-11-01 #97 被余额为 0 的用户刷禁）。
+func TestTaskErrorFromAPIErrorMarksLocalRejection(t *testing.T) {
+	t.Parallel()
+
+	localErr := types.NewErrorWithStatusCode(
+		fmt.Errorf("Insufficient user quota, remaining quota: ¥0.000000"),
+		types.ErrorCodeInsufficientUserQuota,
+		http.StatusForbidden,
+		types.ErrOptionWithSkipRetry(),
+	)
+	taskErr := TaskErrorFromAPIError(localErr)
+	require.NotNil(t, taskErr)
+	require.True(t, taskErr.LocalError, "本地计费拒绝必须标记 LocalError，否则会禁用渠道并重试")
+	require.Equal(t, http.StatusForbidden, taskErr.StatusCode)
+	require.Equal(t, string(types.ErrorCodeInsufficientUserQuota), taskErr.Code)
+
+	// 上游真的报错时行为不变：仍然算渠道错误，该禁用就禁用、该重试就重试。
+	upstreamErr := types.NewErrorWithStatusCode(
+		fmt.Errorf("upstream exploded"),
+		types.ErrorCodeBadResponseStatusCode,
+		http.StatusServiceUnavailable,
+	)
+	taskErr = TaskErrorFromAPIError(upstreamErr)
+	require.NotNil(t, taskErr)
+	require.False(t, taskErr.LocalError, "上游错误不能被标成本地拒绝，否则坏渠道不会被踢出池子")
+
+	require.Nil(t, TaskErrorFromAPIError(nil))
+}
