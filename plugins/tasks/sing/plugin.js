@@ -13,7 +13,7 @@ export const meta = {
     en: "AI singing covers via the sing-gateway job API",
     zh: "通过 sing-gateway 任务接口生成 AI 翻唱",
   },
-  version: "1.0.1",
+  version: "1.0.2",
   author: { name: "leicanxi" },
   models: ["sing-song"],
   fetchMode: "per_task",
