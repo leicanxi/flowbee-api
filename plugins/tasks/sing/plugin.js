@@ -89,6 +89,22 @@ function clampSeconds(value) {
   return Math.max(MIN_SECONDS, Math.min(MAX_SECONDS, Math.round(seconds)));
 }
 
+// gainDb 透传混音增益：只滤掉本轮没给的值（undefined / null / 空串）和无法
+// 解析成数字的垃圾值，其余一律按用户给的实际 dB 数原样送给网关。
+// 合法区间 -60（静音）到 0（原音量）由网关负责钳制，插件不擅自改写。
+function gainDb(value) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? Math.round(value) : undefined;
+  }
+  if (typeof value === "string") {
+    const text = value.trim();
+    if (!text) return undefined;
+    const parsed = Number(text);
+    return Number.isFinite(parsed) ? Math.round(parsed) : undefined;
+  }
+  return undefined;
+}
+
 function jobBody(ctx) {
   const body = plainObject(ctx.requestBody);
   const requestBody = {};
@@ -105,6 +121,10 @@ function jobBody(ctx) {
   if (pitchMode) requestBody.pitch_mode = pitchMode;
   for (const key of ["start", "pitch"]) {
     if (body[key] !== undefined && body[key] !== null && body[key] !== "") requestBody[key] = body[key];
+  }
+  for (const key of ["instrumental_volume", "backup_vocals_volume"]) {
+    const gain = gainDb(body[key]);
+    if (gain !== undefined) requestBody[key] = gain;
   }
   requestBody.duration = clampSeconds(body.duration);
   return requestBody;
@@ -130,6 +150,10 @@ function decodeSubmit(ctx) {
   if (pitchMode) requestBody.pitch_mode = pitchMode;
   for (const key of ["start", "pitch"]) {
     if (body[key] !== undefined && body[key] !== null && body[key] !== "") requestBody[key] = body[key];
+  }
+  for (const key of ["instrumental_volume", "backup_vocals_volume"]) {
+    const gain = gainDb(body[key]);
+    if (gain !== undefined) requestBody[key] = gain;
   }
   requestBody.duration = clampSeconds(body.duration);
   return { kind: "submit", model: model, requestBody: requestBody };
@@ -238,7 +262,7 @@ function responsesPayload(req) {
     if (text) payload = { song: text };
   }
   payload = Object.assign({}, metadata, payload);
-  for (const key of ["song", "url", "voice", "start", "duration", "pitch", "pitch_mode", "source"]) {
+  for (const key of ["song", "url", "voice", "start", "duration", "pitch", "pitch_mode", "source", "instrumental_volume", "backup_vocals_volume"]) {
     if (req[key] !== undefined) payload[key] = req[key];
   }
   if (payload.duration === undefined && req.seconds !== undefined) payload.duration = req.seconds;
@@ -260,6 +284,10 @@ export const protocols = {
       if (trimmed(payload.pitch_mode)) requestBody.pitch_mode = trimmed(payload.pitch_mode);
       for (const key of ["start", "pitch"]) {
         if (payload[key] !== undefined && payload[key] !== null && payload[key] !== "") requestBody[key] = payload[key];
+      }
+      for (const key of ["instrumental_volume", "backup_vocals_volume"]) {
+        const gain = gainDb(payload[key]);
+        if (gain !== undefined) requestBody[key] = gain;
       }
       requestBody.duration = clampSeconds(payload.duration);
       return { kind: "submit", model: ctx.model, requestBody: requestBody };

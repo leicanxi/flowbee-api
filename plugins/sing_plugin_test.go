@@ -36,7 +36,7 @@ func TestSingPluginNativeJobFlow(t *testing.T) {
 		"upstreamModel": "sing-song",
 		"baseUrl":       "http://172.17.0.1:9001/",
 		"apiKey":        "gateway-token",
-		"requestBody":   map[string]any{"song": "雨爱", "voice": "keine", "duration": 60},
+		"requestBody":   map[string]any{"song": "雨爱", "voice": "keine", "duration": 60, "instrumental_volume": 0, "backup_vocals_volume": -12},
 	}
 
 	value, err := plugin.Engine.Call(t.Context(), "buildSubmitRequest", submitCtx)
@@ -49,6 +49,10 @@ func TestSingPluginNativeJobFlow(t *testing.T) {
 	body := descriptor["body"].(map[string]any)
 	assert.Equal(t, "雨爱", body["song"])
 	assert.Equal(t, float64(60), body["duration"])
+	// 混音增益必须原样到达网关：网关默认 -60（伴奏静音），插件一旦丢掉这两个字段，
+	// 客户端把 instrumental_volume 调成 0 也永远拿不到伴奏。0 不能当成空值过滤掉。
+	assert.Equal(t, float64(0), body["instrumental_volume"])
+	assert.Equal(t, float64(-12), body["backup_vocals_volume"])
 
 	value, err = plugin.Engine.Call(t.Context(), "parseSubmitResponse", map[string]any{}, map[string]any{
 		"body": map[string]any{"id": "job_1", "status": "queued"},
