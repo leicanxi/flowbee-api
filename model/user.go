@@ -538,6 +538,9 @@ func GetSelfUserById(id int) (*User, error) {
 		"github_id", "discord_id", "oidc_id", "wechat_id", "telegram_id",
 		"group", "quota", "used_quota", "request_count", "aff_code", "aff_count",
 		"aff_quota", "aff_history", "inviter_id", "linux_do_id", "setting",
+		// 福利积分三列必须随行返回：self DTO 的积分口径由 EffectiveWelfarePoints
+		// 现算，缺列会被当成空日期，永远只报每日基础分。
+		"welfare_points_daily", "welfare_points_permanent", "welfare_points_daily_date",
 		"stripe_customer", "auth_version",
 		"CASE WHEN password <> '' THEN 1 ELSE 0 END AS has_password",
 	}).First(&profile, "id = ?", id).Error

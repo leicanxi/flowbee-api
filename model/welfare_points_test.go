@@ -204,3 +204,19 @@ func TestWelfarePointsDailyBucketResetsAndIsSpentFirst(t *testing.T) {
 	assert.Equal(t, 2, stored.WelfarePointsPermanent)
 	assert.Equal(t, WelfarePointsToday(), stored.WelfarePointsDailyDate)
 }
+
+func TestGetSelfUserByIdCarriesWelfarePoints(t *testing.T) {
+	setupUserUpdateTestState(t)
+
+	user := createWelfarePointsTestUser(t, 741, 5, WelfarePointsToday())
+
+	loaded, err := GetSelfUserById(user.Id)
+	require.NoError(t, err)
+	assert.Equal(t, 741, loaded.WelfarePointsDaily, "the self profile projection must include the welfare point columns")
+	assert.Equal(t, 5, loaded.WelfarePointsPermanent)
+	assert.Equal(t, WelfarePointsToday(), loaded.WelfarePointsDailyDate)
+
+	daily, permanent := EffectiveWelfarePoints(loaded)
+	assert.Equal(t, 741, daily)
+	assert.Equal(t, 5, permanent)
+}
