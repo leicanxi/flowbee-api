@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Gift, Loader2, Share2, Sparkles } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,6 +27,7 @@ import { Dialog } from '@/components/dialog'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { AUTH_USER_QUERY_KEY } from '@/hooks/use-auth-user'
 import dayjs from '@/lib/dayjs'
 import { cn } from '@/lib/utils'
 
@@ -101,6 +102,7 @@ export function LotteryDrawCard({
   turnstileSiteKey,
 }: LotteryDrawCardProps) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const [drawing, setDrawing] = useState(false)
   const [sharing, setSharing] = useState(false)
   const [result, setResult] = useState<LotteryDrawResult | null>(null)
@@ -158,13 +160,17 @@ export function LotteryDrawCard({
         }
         setResult(res.data)
         await refetch()
+        // 奖品会兑现成额度，余额视图要跟着刷新。
+        void queryClient.invalidateQueries({
+          queryKey: AUTH_USER_QUERY_KEY,
+        })
       } catch {
         toast.error(t('Draw failed'))
       } finally {
         setDrawing(false)
       }
     },
-    [refetch, t]
+    [queryClient, refetch, t]
   )
 
   const handleDraw = useCallback(() => {

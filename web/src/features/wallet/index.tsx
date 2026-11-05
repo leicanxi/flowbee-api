@@ -21,10 +21,9 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { SectionPageLayout } from '@/components/layout'
+import { useAuthUserSync } from '@/hooks/use-auth-user'
 import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
-import { getSelf } from '@/lib/api'
-import { useAuthStore, type AuthUser } from '@/stores/auth-store'
 
 import { BillingHistoryDialog } from './components/dialogs/billing-history-dialog'
 import { CreemConfirmDialog } from './components/dialogs/creem-confirm-dialog'
@@ -61,8 +60,11 @@ interface WalletProps {
 
 export function Wallet(props: WalletProps) {
   const { t } = useTranslation()
-  const [user, setUser] = useState<UserWalletData | null>(null)
-  const [userLoading, setUserLoading] = useState(true)
+  // 余额/积分数据统一读共享的 self query：进页、切回标签页、站内动作
+  // invalidate 后都会重取，和概览页、福利页保持同一个口径。
+  const selfQuery = useAuthUserSync()
+  const user = (selfQuery.data ?? null) as unknown as UserWalletData | null
+  const userLoading = selfQuery.isLoading
   const [topupAmount, setTopupAmount] = useState(0)
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null)
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
@@ -102,31 +104,10 @@ export function Wallet(props: WalletProps) {
   const { processing: pancakeProcessing, processWaffoPancakePayment } =
     useWaffoPancakePayment()
 
-  // Fetch and refresh user data
+  // 充值与兑换成功后重取共享 query：余额卡、福利胶囊和登录态一起更新。
   const fetchUser = useCallback(async () => {
-    try {
-      setUserLoading(true)
-      const response = await getSelf()
-      if (response.success && response.data) {
-        setUser(response.data as UserWalletData)
-        // 改造#33：本页拿到的是最新的 self 数据，顺手回写登录态。概览页第 2 步
-        // 那行档位提示读的就是登录态；不回写的话，用户刚充完值回到概览，它还
-        // 写着「距 2 档还差 ¥0.9」，看着像充值没生效。
-        useAuthStore
-          .getState()
-          .auth.setUser(response.data as unknown as AuthUser)
-      }
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to fetch user data:', error)
-    } finally {
-      setUserLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchUser()
-  }, [fetchUser])
+    await selfQuery.refetch()
+  }, [selfQuery])
 
   useEffect(() => {
     if (props.initialShowHistory) {
@@ -217,7 +198,6 @@ export function Wallet(props: WalletProps) {
     const success = await redeemCode(redemptionCode)
     if (success) {
       setRedemptionCode('')
-      await fetchUser()
     }
   }
 

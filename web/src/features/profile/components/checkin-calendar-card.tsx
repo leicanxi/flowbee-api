@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CalendarDays,
   ChevronDown,
@@ -41,6 +41,7 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from '@/components/ui/tooltip'
+import { AUTH_USER_QUERY_KEY } from '@/hooks/use-auth-user'
 import dayjs from '@/lib/dayjs'
 import { handleServerError } from '@/lib/handle-server-error'
 import { createServerError } from '@/lib/server-error-message'
@@ -63,6 +64,7 @@ export function CheckinCalendarCard({
   turnstileSiteKey,
 }: CheckinCalendarCardProps) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date()
     return new Date(now.getFullYear(), now.getMonth(), 1)
@@ -151,6 +153,11 @@ export function CheckinCalendarCard({
             `${t('Check-in successful! Received')} ${res.data.points_awarded} ${t('points')}`
           )
           refetch()
+          // 签到加的是每日积分桶：让所有积分/余额视图立即重取，
+          // 而不是等用户离开再回到本页。
+          void queryClient.invalidateQueries({
+            queryKey: AUTH_USER_QUERY_KEY,
+          })
           setTurnstileModalVisible(false)
         } else {
           if (!token && shouldTriggerCaptcha(res.message)) {
@@ -172,7 +179,7 @@ export function CheckinCalendarCard({
         setCheckinLoading(false)
       }
     },
-    [altchaEnabled, refetch, shouldTriggerCaptcha, t, turnstileSiteKey]
+    [altchaEnabled, queryClient, refetch, shouldTriggerCaptcha, t, turnstileSiteKey]
   )
 
   const handlePrevMonth = () => {

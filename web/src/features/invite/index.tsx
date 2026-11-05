@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown } from 'lucide-react'
 
@@ -29,9 +29,8 @@ import { CheckinCalendarCard } from '@/features/profile/components/checkin-calen
 import { AffiliateRewardsCard } from '@/features/wallet/components/affiliate-rewards-card'
 import { useAffiliate } from '@/features/wallet/hooks'
 import type { UserWalletData } from '@/features/wallet/types'
+import { useAuthUserSync } from '@/hooks/use-auth-user'
 import { useStatus } from '@/hooks/use-status'
-import { getSelf } from '@/lib/api'
-import { useAuthStore, type AuthUser } from '@/stores/auth-store'
 
 /**
  * Welfare page (formerly "Invite & Check-in").
@@ -50,8 +49,11 @@ import { useAuthStore, type AuthUser } from '@/stores/auth-store'
  */
 export function Invite() {
   const { t } = useTranslation()
-  const [user, setUser] = useState<UserWalletData | null>(null)
-  const [userLoading, setUserLoading] = useState(true)
+  // 积分/余额卡统一读共享的 self query：进页、切回标签页、站内动作
+  // invalidate 后都会重取，签到完当页就能看到新余额。
+  const selfQuery = useAuthUserSync()
+  const user = (selfQuery.data ?? null) as unknown as UserWalletData | null
+  const userLoading = selfQuery.isLoading
 
   const { status } = useStatus()
   const { affiliateLink, loading: affiliateLoading } = useAffiliate()
@@ -87,31 +89,6 @@ export function Invite() {
   const turnstileEnabled =
     altchaEnabled || !!(status?.turnstile_check && status?.turnstile_site_key)
   const turnstileSiteKey = status?.turnstile_site_key || ''
-
-  const fetchUser = useCallback(async () => {
-    try {
-      setUserLoading(true)
-      const response = await getSelf()
-      if (response.success && response.data) {
-        setUser(response.data as UserWalletData)
-        // 改造#33：同钱包页。签到、转入奖励都会改变余额，也就改变了免费
-        // 模型调用速率所在的档位，所以这里同样要把最新数据回写登录态，
-        // 否则概览页那行档位提示会停在进入福利页之前的档位。
-        useAuthStore
-          .getState()
-          .auth.setUser(response.data as unknown as AuthUser)
-      }
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to fetch user data:', error)
-    } finally {
-      setUserLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchUser()
-  }, [fetchUser])
 
   return (
     <SectionPageLayout>

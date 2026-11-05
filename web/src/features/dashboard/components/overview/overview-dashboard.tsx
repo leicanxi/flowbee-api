@@ -24,7 +24,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 // import { motion, useReducedMotion } from 'motion/react'
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -37,7 +37,8 @@ import type {
   ApiKeyFormData,
   CreatedApiKey,
 } from '@/features/keys/types'
-import { getSelf, getUserModels } from '@/lib/api'
+import { useAuthUserSync } from '@/hooks/use-auth-user'
+import { getUserModels } from '@/lib/api'
 // import { MOTION_TRANSITION } from '@/lib/motion'
 import { ROLE } from '@/lib/roles'
 import { requireServerSuccess } from '@/lib/server-error-message'
@@ -173,25 +174,9 @@ export function OverviewDashboard() {
   const usedQuota = Number(user?.used_quota ?? 0)
   const isAdmin = Boolean(user?.role && user.role >= ROLE.ADMIN)
 
-  // 余额/积分卡读的是登录态里的用户快照；免费模型在站外扣分后这份快照不会
-  // 自己更新，卡片会一直停在登录那一刻的数字，和积分明细对不上。与钱包页
-  // 同一个做法：每次进概览都拉一次最新 self 数据回写登录态。
-  useEffect(() => {
-    let cancelled = false
-    getSelf()
-      .then((response) => {
-        if (cancelled) return
-        if (response.success && response.data) {
-          useAuthStore.getState().auth.setUser(response.data)
-        }
-      })
-      .catch(() => {
-        // 拉不到就继续用当前快照，下次进页再试。
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  // 余额/积分卡读的是登录态里的用户快照；共享的 self query 在进页时重取一次，
+  // 让卡片与积分明细同口径（staleTime 0，挂载即刷新）。
+  useAuthUserSync()
 
   const apiKeysQuery = useQuery({
     queryKey: ['dashboard', 'overview', 'api-keys'],
