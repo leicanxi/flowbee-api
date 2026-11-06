@@ -87,7 +87,7 @@ func TestSingPluginUsageFacts(t *testing.T) {
 		expected map[string]any
 	}{
 		{"requested", map[string]any{"duration": 60}, map[string]any{"seconds": float64(60), "cached": false}},
-		{"clamps long", map[string]any{"duration": 999}, map[string]any{"seconds": float64(120), "cached": false}},
+		{"clamps long", map[string]any{"duration": 999}, map[string]any{"seconds": float64(600), "cached": false}},
 		{"defaults missing", map[string]any{}, map[string]any{"seconds": float64(25), "cached": false}},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {

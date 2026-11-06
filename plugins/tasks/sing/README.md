@@ -40,7 +40,7 @@ The submit response is `{"id": "...", "status": "queued"}`. Poll until
 
 The plugin declares two usage facts:
 
-- `seconds` — actual clip length (clamped 5–120 at submit, settled from
+- `seconds` — actual clip length (clamped 5–600 at submit, settled from
   `duration_seconds` on completion)
 - `cached` — whether the gateway served the cover from its disk cache
 

@@ -13,7 +13,7 @@ export const meta = {
     en: "AI singing covers via the sing-gateway job API",
     zh: "通过 sing-gateway 任务接口生成 AI 翻唱",
   },
-  version: "1.0.2",
+  version: "1.0.4",
   author: { name: "leicanxi" },
   models: ["sing-song"],
   fetchMode: "per_task",
@@ -45,7 +45,7 @@ export const meta = {
 };
 
 const MIN_SECONDS = 5;
-const MAX_SECONDS = 120;
+const MAX_SECONDS = 600;
 const DEFAULT_SECONDS = 25;
 const STATUSES = {
   queued: "SUBMITTED",
@@ -337,7 +337,17 @@ export const native = {
   decodeSubmit: decodeSubmit,
   taskCreated: function (_ctx, task) {
     const data = plainObject(task.data);
-    return { id: task.task_id, status: trimmed(data.status) || "queued" };
+    const status = trimmed(data.status) || "queued";
+    const view = { id: task.task_id, status: status };
+    // A duplicate submission inside the gateway's job TTL reuses the finished
+    // job, so the submit reply can already be terminal. Carry the same result
+    // fields the query route returns; clients stop polling on "succeeded" and
+    // would otherwise end up with no audio URL.
+    for (const key of ["audio_url", "filename", "title", "artist", "duration_seconds", "cached"]) {
+      if (data[key] !== undefined) view[key] = data[key];
+    }
+    if (status === "failed") view.error = trimmed(task.fail_reason) || trimmed(data.error) || "生成失败";
+    return view;
   },
   taskStatus: function (_ctx, task) {
     const data = plainObject(task.data);
