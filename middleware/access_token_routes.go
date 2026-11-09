@@ -114,6 +114,7 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	// SSO 出站签发身份断言（改造#31、#37）：只允许登录会话，个人访问令牌一律拒绝。
 	"GET /api/user/feedback_sso":                   accessTokenSessionRule,
 	"GET /api/user/octop_sso":                      accessTokenSessionRule,
+	"GET /api/user/sso/ticket":                     accessTokenSessionRule,
 	"GET /api/user/oauth/bindings":                 accessTokenScopeRule("account_security:read"),
 	"DELETE /api/user/oauth/bindings/:provider_id": accessTokenScopeRule("account_security:write"),
 
